@@ -2,26 +2,170 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
+  /* Light theme */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+    --background: 0 0% 97%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 45%;
+    --radius: 0.5rem;
+  }
+
+  /* Dark theme */
+  .dark {
+    color-scheme: dark;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 60%;
+    --radius: 0.5rem;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* FullCalendar dark mode overrides */
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th,
+.dark .fc-theme-standard .fc-scrollgrid {
+  border-color: rgb(31 41 55) !important;
+}
+
+.dark .fc-col-header-cell-cushion,
+.dark .fc-daygrid-day-number,
+.dark .fc-timegrid-slot-label-cushion,
+.dark .fc-list-day-text,
+.dark .fc-list-day-side-text {
+  color: rgb(156 163 175) !important;
+  text-decoration: none !important;
+}
+
+.dark .fc-toolbar-title {
+  color: rgb(255 255 255) !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+}
+
+.dark .fc-button {
+  background-color: rgb(31 41 55) !important;
+  border-color: rgb(55 65 81) !important;
+  color: rgb(209 213 219) !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.25rem 0.625rem !important;
+  box-shadow: none !important;
+}
+
+.dark .fc-button:hover {
+  background-color: rgb(55 65 81) !important;
+  color: rgb(255 255 255) !important;
+}
+
+.dark .fc-button-active,
+.dark .fc-button:not(:disabled):active {
+  background-color: rgb(75 85 99) !important;
+  color: rgb(255 255 255) !important;
+}
+
+.dark .fc-daygrid-day,
+.dark .fc-timegrid-col {
+  background-color: transparent !important;
+}
+
+.dark .fc-daygrid-day.fc-day-today,
+.dark .fc-timegrid-col.fc-day-today {
+  background-color: rgb(17 24 39 / 0.6) !important;
+}
+
+.dark .fc-timegrid-now-indicator-line {
+  border-color: rgb(99 102 241) !important;
+}
+
+.dark .fc-highlight {
+  background-color: rgb(55 65 81 / 0.4) !important;
+}
+
+.dark .fc-event {
+  border-radius: 4px !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: opacity 150ms ease, filter 150ms ease !important;
+}
+
+.fc-event:hover {
+  opacity: 0.85 !important;
+  filter: brightness(1.1) !important;
+}
+
+/* FullCalendar light mode */
+.fc-toolbar-title {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+}
+
+.fc-button {
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.25rem 0.625rem !important;
+  box-shadow: none !important;
+}
+
+.fc-event {
+  border-radius: 4px !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: opacity 150ms ease, filter 150ms ease !important;
+}
+
+.fc-event:hover {
+  opacity: 0.85 !important;
+  filter: brightness(1.1) !important;
 }
