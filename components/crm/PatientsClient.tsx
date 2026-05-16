@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search } from "lucide-react";
-import { format } from "date-fns";
+import { Search, Filter, AlertCircle } from "lucide-react";
+import { format, subMonths, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Patient, Appointment } from "@/types/database";
 
 const SOURCE_CONFIG: Record<Patient["source"], { label: string; className: string }> = {
@@ -25,6 +32,7 @@ interface EditablePatient { full_name: string; phone: string; email: string; not
 
 export default function PatientsClient({ patients }: { patients: Patient[] }) {
   const [search, setSearch]                 = useState("");
+  const [sourceFilter, setSourceFilter]     = useState<string>("all");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sheetOpen, setSheetOpen]           = useState(false);
   const [isEditing, setIsEditing]           = useState(false);
@@ -33,13 +41,21 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
   const [appointments, setAppointments]     = useState<Appointment[]>([]);
   const [loadingApts, setLoadingApts]       = useState(false);
 
+  const threeMonthsAgo = subMonths(new Date(), 3);
+
   const filtered = useMemo(() => {
-    if (search.length < 2) return patients;
-    const q = search.toLowerCase();
-    return patients.filter(
-      (p) => p.full_name.toLowerCase().includes(q) || p.phone?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)
-    );
-  }, [patients, search]);
+    return patients.filter((p) => {
+      const q = search.toLowerCase();
+      const matchesSearch = search.length < 2 || 
+        p.full_name.toLowerCase().includes(q) || 
+        p.phone?.toLowerCase().includes(q) || 
+        p.email?.toLowerCase().includes(q);
+      
+      const matchesSource = sourceFilter === "all" || p.source === sourceFilter;
+      
+      return matchesSearch && matchesSource;
+    });
+  }, [patients, search, sourceFilter]);
 
   const openSheet = async (patient: Patient) => {
     setSelectedPatient(patient);
@@ -75,17 +91,30 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
         <p className="text-sm text-muted-foreground mt-0.5">Directorio de pacientes de la clínica</p>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar pacientes..."
-          className="pl-9 h-9 text-sm"
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 md:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar pacientes..."
+            className="pl-9 h-9 text-sm w-full"
+          />
+        </div>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="h-9 text-sm w-full sm:w-44">
+            <SelectValue placeholder="Fuente" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las fuentes</SelectItem>
+            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+            <SelectItem value="web">Web</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto w-full">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-muted-foreground">
@@ -93,14 +122,14 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
             </p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Nombre</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Teléfono</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Fuente</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">Registro</th>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-3 md:px-4 py-3 text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Paciente</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Contacto</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
+                <th className="text-left px-3 md:px-4 py-3 text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Fuente</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Registro</th>
               </tr>
             </thead>
             <tbody>
@@ -112,13 +141,18 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
                     onClick={() => openSheet(patient)}
                     className="border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{patient.full_name}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">{patient.phone ?? "—"}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">{patient.email ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className={`text-xs border px-2 py-0.5 ${src.className}`}>{src.label}</Badge>
+                    <td className="px-3 md:px-4 py-4 text-sm font-semibold text-foreground whitespace-nowrap">
+                      {patient.full_name}
+                      <div className="sm:hidden text-[10px] text-muted-foreground font-normal mt-0.5">
+                        {patient.phone ?? "Sin teléfono"}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
+                    <td className="px-4 py-4 text-sm text-muted-foreground hidden sm:table-cell whitespace-nowrap">{patient.phone ?? "—"}</td>
+                    <td className="px-4 py-4 text-sm text-muted-foreground hidden md:table-cell whitespace-nowrap">{patient.email ?? "—"}</td>
+                    <td className="px-3 md:px-4 py-4">
+                      <Badge variant="outline" className={`text-[10px] border px-1.5 py-0.5 font-medium ${src.className}`}>{src.label}</Badge>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground hidden lg:table-cell whitespace-nowrap">
                       {format(new Date(patient.created_at), "d MMM yyyy", { locale: es })}
                     </td>
                   </tr>
@@ -132,7 +166,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
       <p className="text-xs text-muted-foreground">{filtered.length} paciente{filtered.length !== 1 ? "s" : ""}</p>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-card border-border">
           <SheetHeader>
             <SheetTitle className="text-base font-semibold">Detalle de paciente</SheetTitle>
           </SheetHeader>

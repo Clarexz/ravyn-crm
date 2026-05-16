@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/appointments", label: "Citas", icon: Calendar },
   { href: "/patients", label: "Pacientes", icon: Users },
+  { href: "/reports", label: "Reportes", icon: BarChart3 },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
 
@@ -98,19 +100,19 @@ export function Sidebar({
               {userName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{userName}</p>
-            <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
           </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-foreground h-8 px-2"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9"
         >
-          <LogOut className="w-3.5 h-3.5" />
-          Cerrar sesión
+          <LogOut className="w-4 h-4" />
+          <span className="text-xs font-medium">Cerrar sesión</span>
         </Button>
       </div>
     </div>
@@ -122,7 +124,7 @@ export function Sidebar({
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden text-gray-400 hover:text-white"
+        className="fixed top-[8px] left-4 z-50 md:hidden text-muted-foreground hover:text-foreground hover:bg-transparent"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle sidebar"
       >
@@ -132,7 +134,7 @@ export function Sidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -140,7 +142,7 @@ export function Sidebar({
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full w-60 bg-card border-r border-border z-50 transition-transform duration-200 md:hidden",
+          "fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-50 transition-transform duration-300 ease-in-out md:hidden shadow-2xl",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

@@ -7,7 +7,7 @@ import { MOCK_CLINIC, MOCK_USER } from "@/lib/mock-data";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <NewAppointmentProvider>
-      <div className="flex h-screen bg-background overflow-hidden">
+      <div className="flex h-screen h-[100dvh] bg-background overflow-hidden">
         <Sidebar
           clinicName={MOCK_CLINIC.name}
           userName={MOCK_USER.full_name}

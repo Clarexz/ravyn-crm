@@ -139,12 +139,12 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[95vw] max-w-lg bg-card border-border p-4 md:p-6 rounded-lg overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">Nueva cita</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2 pb-2">
           {/* Patient search */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Paciente</Label>
@@ -157,25 +157,25 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
                   setValue("patient_id", "");
                 }}
                 placeholder="Buscar por nombre..."
-                className="h-9 text-sm"
+                className="h-10 md:h-9 text-sm"
               />
               {patientResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
+                <div className="absolute top-full left-0 right-0 z-[60] mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden max-h-48 overflow-y-auto">
                   {patientResults.map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => selectPatient(p)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      className="w-full text-left px-3 py-2.5 md:py-2 text-sm hover:bg-accent transition-colors border-b border-border last:border-0"
                     >
-                      <span className="font-medium text-foreground">{p.full_name}</span>
-                      {p.phone && <span className="text-muted-foreground ml-2 text-xs">{p.phone}</span>}
+                      <span className="font-medium text-foreground block md:inline">{p.full_name}</span>
+                      {p.phone && <span className="text-muted-foreground md:ml-2 text-xs">{p.phone}</span>}
                     </button>
                   ))}
                   <button
                     type="button"
                     onClick={() => { setShowCreate(true); setPatientResults([]); setNewPatient({ full_name: patientQuery, phone: "" }); }}
-                    className="w-full text-left px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-accent border-t border-border transition-colors"
+                    className="w-full text-left px-3 py-2.5 md:py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-accent border-t border-border transition-colors font-medium"
                   >
                     + Crear paciente nuevo
                   </button>
@@ -185,25 +185,25 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
             {errors.patient_id && <p className="text-xs text-red-500">{errors.patient_id.message}</p>}
 
             {showCreate && (
-              <div className="mt-2 p-3 bg-muted/50 border border-border rounded-md space-y-2">
+              <div className="mt-2 p-3 bg-muted/50 border border-border rounded-md space-y-3">
                 <p className="text-xs font-medium text-muted-foreground">Nuevo paciente</p>
                 <Input
                   placeholder="Nombre completo"
                   value={newPatient.full_name}
                   onChange={(e) => setNewPatient((p) => ({ ...p, full_name: e.target.value }))}
-                  className="h-8 text-sm"
+                  className="h-10 md:h-8 text-sm"
                 />
                 <Input
                   placeholder="Teléfono (opcional)"
                   value={newPatient.phone}
                   onChange={(e) => setNewPatient((p) => ({ ...p, phone: e.target.value }))}
-                  className="h-8 text-sm"
+                  className="h-10 md:h-8 text-sm"
                 />
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" onClick={handleCreatePatient} disabled={isCreating || !newPatient.full_name.trim()} className="h-7 text-xs">
+                  <Button type="button" size="sm" onClick={handleCreatePatient} disabled={isCreating || !newPatient.full_name.trim()} className="flex-1 md:flex-none h-9 md:h-7 text-xs">
                     {isCreating ? "Creando..." : "Crear"}
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreate(false)} className="h-7 text-xs">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreate(false)} className="flex-1 md:flex-none h-9 md:h-7 text-xs">
                     Cancelar
                   </Button>
                 </div>
@@ -212,13 +212,13 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
           </div>
 
           {/* Date and Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Fecha</Label>
               <input
                 type="date"
                 {...register("date")}
-                className="w-full h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-10 md:h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
               />
               {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
             </div>
@@ -227,46 +227,47 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
               <input
                 type="time"
                 {...register("time")}
-                className="w-full h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-10 md:h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
               />
               {errors.time && <p className="text-xs text-red-500">{errors.time.message}</p>}
             </div>
           </div>
 
-          {/* Duration */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Duración</Label>
-            <Select defaultValue="30" onValueChange={(v) => setValue("duration_minutes", v)}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Duration and Service */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Duración</Label>
+              <Select defaultValue="30" onValueChange={(v) => setValue("duration_minutes", v)}>
+                <SelectTrigger className="h-10 md:h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Service */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Servicio</Label>
-            <Select onValueChange={(v) => setValue("service", v)}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleccionar servicio..." /></SelectTrigger>
-              <SelectContent>
-                {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {errors.service && <p className="text-xs text-red-500">{errors.service.message}</p>}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Servicio</Label>
+              <Select onValueChange={(v) => setValue("service", v)}>
+                <SelectTrigger className="h-10 md:h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                <SelectContent>
+                  {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {errors.service && <p className="text-xs text-red-500">{errors.service.message}</p>}
+            </div>
           </div>
 
           {/* Notes */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Notas (opcional)</Label>
-            <Textarea {...register("notes")} placeholder="Observaciones adicionales..." rows={2} className="text-sm resize-none" />
+            <Textarea {...register("notes")} placeholder="Observaciones adicionales..." rows={3} className="text-sm resize-none" />
           </div>
 
           {submitError && <p className="text-xs text-red-500">{submitError}</p>}
 
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={handleClose} className="h-8 text-xs">Cancelar</Button>
-            <Button type="submit" size="sm" disabled={isSubmitting} className="h-8 text-xs px-4 font-semibold">
+          <div className="flex flex-col-reverse xs:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" size="sm" onClick={handleClose} className="h-10 md:h-8 text-xs">Cancelar</Button>
+            <Button type="submit" size="sm" disabled={isSubmitting} className="h-10 md:h-8 text-xs px-4 font-semibold bg-foreground text-background">
               {isSubmitting ? "Guardando..." : "Guardar cita"}
             </Button>
           </div>
