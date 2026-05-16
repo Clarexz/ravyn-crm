@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Plus } from "lucide-react";
-import { format, subMonths } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";

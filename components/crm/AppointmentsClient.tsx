@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/table";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import { TimeSlotPicker } from "@/components/crm/TimeSlotPicker";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format as formatDateFn } from "date-fns";
@@ -53,14 +52,6 @@ const DEFAULT_SERVICE_COLOR = "#6366f1";
 
 type ViewMode = "calendar" | "table";
 
-const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  pending:   "#eab308",
-  confirmed: "#10b981",
-  cancelled: "#ef4444",
-  completed: "#6b7280",
-  no_show:   "#f97316",
-};
-
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   pending:   "Pendiente",
   confirmed: "Confirmada",
@@ -79,8 +70,6 @@ const PAGE_SIZE = 10;
 
 export default function AppointmentsClient({
   appointments: initialAppointments,
-  clinicId: _clinicId,
-  userId: _userId,
 }: {
   appointments: AppointmentWithPatient[];
   clinicId: string;
@@ -100,7 +89,6 @@ export default function AppointmentsClient({
   const [page, setPage]                 = useState(1);
   const [selectedApt, setSelectedApt]   = useState<AppointmentWithPatient | null>(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
-  const [remindingId, setRemindingId]   = useState<string | null>(null);
   const [isSaving, setIsSaving]         = useState(false);
 
   // Edit logic
@@ -191,22 +179,6 @@ export default function AppointmentsClient({
       toast.error("Error de red");
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleSendReminder = async (id: string, patientName: string) => {
-    setRemindingId(id);
-    try {
-      const res = await fetch(`/api/appointments/${id}/remind`, { method: "POST" });
-      if (res.ok) {
-        toast.success(`Recordatorio enviado a ${patientName}`);
-      } else {
-        toast.error("Error al enviar el recordatorio");
-      }
-    } catch {
-      toast.error("Error inesperado");
-    } finally {
-      setRemindingId(null);
     }
   };
 
