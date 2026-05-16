@@ -9,14 +9,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Appointment } from "@/types/database";
+import type { Appointment, Patient } from "@/types/database";
+
+type AppointmentWithPatient = Appointment & {
+  patients: Pick<Patient, "full_name" | "phone"> | null;
+};
 
 interface KpiDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  appointments: Appointment[];
+  appointments: AppointmentWithPatient[];
 }
 
 export function KpiDetailsModal({

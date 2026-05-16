@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, AlertCircle } from "lucide-react";
-import { format, subMonths, isBefore } from "date-fns";
+import { Search, Plus } from "lucide-react";
+import { format, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import {
   Select,
@@ -31,6 +34,7 @@ const SOURCE_CONFIG: Record<Patient["source"], { label: string; className: strin
 interface EditablePatient { full_name: string; phone: string; email: string; notes: string }
 
 export default function PatientsClient({ patients }: { patients: Patient[] }) {
+  const router = useRouter();
   const [search, setSearch]                 = useState("");
   const [sourceFilter, setSourceFilter]     = useState<string>("all");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -41,7 +45,47 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
   const [appointments, setAppointments]     = useState<Appointment[]>([]);
   const [loadingApts, setLoadingApts]       = useState(false);
 
-  const threeMonthsAgo = subMonths(new Date(), 3);
+  const [createOpen, setCreateOpen]         = useState(false);
+  const [newPatient, setNewPatient]         = useState<EditablePatient>({ full_name: "", phone: "", email: "", notes: "" });
+  const [isCreating, setIsCreating]         = useState(false);
+
+  const resetCreateForm = () => {
+    setNewPatient({ full_name: "", phone: "", email: "", notes: "" });
+  };
+
+  const handleCreate = async () => {
+    if (!newPatient.full_name.trim()) {
+      toast.error("El nombre es requerido");
+      return;
+    }
+    setIsCreating(true);
+    try {
+      const res = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newPatient, source: "manual" }),
+      });
+      const raw = await res.text();
+      let parsed: { error?: string } | Patient = {};
+      try { parsed = raw ? JSON.parse(raw) : {}; } catch { /* not json */ }
+
+      if (!res.ok) {
+        console.error("[Create patient] Status:", res.status, "Body:", raw);
+        const msg = (parsed as { error?: string }).error ?? `Error ${res.status}: ${raw.slice(0, 200) || "respuesta vacía"}`;
+        toast.error(msg);
+        return;
+      }
+      toast.success("Paciente creado");
+      resetCreateForm();
+      setCreateOpen(false);
+      router.refresh();
+    } catch (e) {
+      console.error("[Create patient] Network error:", e);
+      toast.error("Error de red");
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return patients.filter((p) => {
@@ -86,9 +130,19 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Pacientes</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Directorio de pacientes de la clínica</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Pacientes</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Directorio de pacientes de la clínica</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+          className="h-9 gap-2 bg-foreground text-background hover:bg-foreground/90 shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Nuevo paciente</span>
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -293,6 +347,72 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
           </AnimatePresence>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetCreateForm(); }}>
+        <DialogContent className="w-[95vw] max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Nuevo paciente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Nombre completo *</Label>
+              <Input
+                value={newPatient.full_name}
+                onChange={(e) => setNewPatient((p) => ({ ...p, full_name: e.target.value }))}
+                placeholder="Ej. Ana García López"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Teléfono</Label>
+              <Input
+                value={newPatient.phone}
+                onChange={(e) => setNewPatient((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="5512345678"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Email</Label>
+              <Input
+                type="email"
+                value={newPatient.email}
+                onChange={(e) => setNewPatient((p) => ({ ...p, email: e.target.value }))}
+                placeholder="paciente@correo.com"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Notas</Label>
+              <Textarea
+                value={newPatient.notes}
+                onChange={(e) => setNewPatient((p) => ({ ...p, notes: e.target.value }))}
+                rows={3}
+                placeholder="Alergias, observaciones..."
+                className="text-sm resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setCreateOpen(false); resetCreateForm(); }}
+                className="h-9 text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCreate}
+                disabled={isCreating || !newPatient.full_name.trim()}
+                className="h-9 text-xs px-4 font-semibold bg-foreground text-background"
+              >
+                {isCreating ? "Creando..." : "Crear paciente"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

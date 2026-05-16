@@ -12,6 +12,7 @@ import {
   X,
   LogOut,
   BarChart3,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/appointments", label: "Citas", icon: Calendar },
   { href: "/patients", label: "Pacientes", icon: Users },
+  { href: "/services", label: "Servicios", icon: Tag },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];

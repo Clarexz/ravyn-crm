@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
@@ -24,13 +24,32 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
+import { TimeSlotPicker } from "@/components/crm/TimeSlotPicker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Appointment, AppointmentStatus, Patient } from "@/types/database";
+import { useRouter } from "next/navigation";
+import { format as formatDateFn } from "date-fns";
+import type { Appointment, AppointmentStatus, Patient, Service } from "@/types/database";
+
+const DURATIONS = [
+  { value: "15", label: "15 minutos" },
+  { value: "30", label: "30 minutos" },
+  { value: "45", label: "45 minutos" },
+  { value: "60", label: "1 hora" },
+  { value: "90", label: "1.5 horas" },
+  { value: "120", label: "2 horas" },
+  { value: "150", label: "2.5 horas" },
+  { value: "180", label: "3 horas" },
+  { value: "210", label: "3.5 horas" },
+  { value: "240", label: "4 horas" },
+];
 
 type AppointmentWithPatient = Appointment & {
   patients: Pick<Patient, "full_name" | "phone"> | null;
+  services?: { color: string } | null;
 };
+
+const DEFAULT_SERVICE_COLOR = "#6366f1";
 
 type ViewMode = "calendar" | "table";
 
@@ -67,8 +86,14 @@ export default function AppointmentsClient({
   clinicId: string;
   userId: string;
 }) {
+  const router = useRouter();
   const [viewMode, setViewMode]         = useState<ViewMode>("calendar");
   const [appointments, _setAppointments] = useState(initialAppointments);
+
+  useEffect(() => {
+    _setAppointments(initialAppointments);
+  }, [initialAppointments]);
+
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -76,52 +101,96 @@ export default function AppointmentsClient({
   const [selectedApt, setSelectedApt]   = useState<AppointmentWithPatient | null>(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
   const [remindingId, setRemindingId]   = useState<string | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isSaving, setIsSaving]         = useState(false);
 
   // Edit logic
   const [isEditing, setIsEditing] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
   const [editValues, setEditValues] = useState({
     status: "pending" as AppointmentStatus,
-    service: "",
+    date: "",
+    time: "",
+    duration_minutes: "30",
+    service_id: "",
     notes: "",
   });
 
+  const todayStr = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+  })();
+
   const openAptDetails = (apt: AppointmentWithPatient) => {
     setSelectedApt(apt);
-    setEditValues({
-      status: apt.status,
-      service: apt.service ?? "",
-      notes: apt.notes ?? "",
-    });
     setIsEditing(false);
     setSheetOpen(true);
   };
 
+  const enterEditMode = async () => {
+    if (!selectedApt) return;
+    const d = new Date(selectedApt.scheduled_at);
+    setEditValues({
+      status: selectedApt.status,
+      date: formatDateFn(d, "yyyy-MM-dd"),
+      time: formatDateFn(d, "HH:mm"),
+      duration_minutes: String(selectedApt.duration_minutes),
+      service_id: selectedApt.service_id ?? "",
+      notes: selectedApt.notes ?? "",
+    });
+    setIsEditing(true);
+
+    if (services.length === 0) {
+      try {
+        const res = await fetch("/api/services?active=true");
+        if (res.ok) setServices(await res.json() as Service[]);
+      } catch { /* ignore */ }
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (!selectedApt) return;
-    setIsUpdatingStatus(true);
+    if (!editValues.date || !editValues.time) {
+      toast.error("Fecha y hora son requeridas");
+      return;
+    }
+    const scheduledAt = new Date(`${editValues.date}T${editValues.time}`);
+    if (isNaN(scheduledAt.getTime())) {
+      toast.error("Fecha/hora inválidas");
+      return;
+    }
+
+    const selectedService = services.find((s) => s.id === editValues.service_id);
+
+    setIsSaving(true);
     try {
-      const res = await fetch(`/api/appointments/${selectedApt.id}/status`, {
+      const res = await fetch(`/api/appointments/${selectedApt.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editValues),
+        body: JSON.stringify({
+          status: editValues.status,
+          scheduled_at: scheduledAt.toISOString(),
+          duration_minutes: parseInt(editValues.duration_minutes),
+          service: selectedService?.name ?? selectedApt.service ?? null,
+          service_id: editValues.service_id || null,
+          cost_at_booking: selectedService?.cost ?? selectedApt.cost_at_booking ?? null,
+          notes: editValues.notes,
+        }),
       });
-      if (res.ok) {
-        const updated = await res.json() as Appointment;
-        // Actualizamos la lista global para que el calendario se repinte
-        const updatedList = appointments.map(a => a.id === updated.id ? { ...a, ...updated } : a);
-        _setAppointments(updatedList);
-        
-        // Actualizamos el detalle seleccionado
-        setSelectedApt(prev => prev ? { ...prev, status: updated.status } : null);
-        
-        toast.success("Cita actualizada correctamente");
-        setIsEditing(false); // Volver a la vista de detalles
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? "Error al guardar");
+        return;
       }
+      const updated = await res.json() as AppointmentWithPatient;
+      _setAppointments((list) => list.map((a) => (a.id === updated.id ? updated : a)));
+      setSelectedApt(updated);
+      setIsEditing(false);
+      toast.success("Cita actualizada");
+      router.refresh();
     } catch {
-      toast.error("Error al guardar los cambios");
+      toast.error("Error de red");
     } finally {
-      setIsUpdatingStatus(false);
+      setIsSaving(false);
     }
   };
 
@@ -154,15 +223,21 @@ export default function AppointmentsClient({
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const calendarEvents = appointments.map((apt) => ({
-    id:              apt.id,
-    title:           apt.patients?.full_name ?? "Sin nombre",
-    start:           apt.scheduled_at,
-    end:             new Date(new Date(apt.scheduled_at).getTime() + apt.duration_minutes * 60000).toISOString(),
-    backgroundColor: STATUS_COLORS[apt.status],
-    borderColor:     STATUS_COLORS[apt.status],
-    textColor:       "#fff",
-  }));
+  const calendarEvents = appointments.map((apt) => {
+    const serviceColor = apt.services?.color ?? DEFAULT_SERVICE_COLOR;
+    const isInactive = apt.status === "cancelled" || apt.status === "no_show";
+    const color = isInactive ? "#6b7280" : serviceColor;
+    return {
+      id:              apt.id,
+      title:           apt.patients?.full_name ?? "Sin nombre",
+      start:           apt.scheduled_at,
+      end:             new Date(new Date(apt.scheduled_at).getTime() + apt.duration_minutes * 60000).toISOString(),
+      backgroundColor: color,
+      borderColor:     color,
+      textColor:       "#fff",
+      classNames:      apt.status === "cancelled" ? ["opacity-60", "line-through"] : [],
+    };
+  });
 
   const handleEventClick = (info: EventClickArg) => {
     const apt = appointments.find((a) => a.id === info.event.id);
@@ -204,9 +279,9 @@ export default function AppointmentsClient({
 
       {viewMode === "table" ? (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-            <div className="relative flex-1 min-w-0 sm:min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -214,30 +289,28 @@ export default function AppointmentsClient({
                 className="pl-9 h-9 text-sm w-full"
               />
             </div>
-            <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto">
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-                <SelectTrigger className="h-9 text-sm w-full sm:w-44">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-                <SelectTrigger className="h-9 text-sm w-full sm:w-40">
-                  <SelectValue placeholder="Fuente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las fuentes</SelectItem>
-                  {(Object.entries(SOURCE_LABELS) as [string, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-9 text-sm w-full sm:w-44 shrink-0">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-9 text-sm w-full sm:w-44 shrink-0">
+                <SelectValue placeholder="Fuente" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las fuentes</SelectItem>
+                {(Object.entries(SOURCE_LABELS) as [string, string][]).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
@@ -339,22 +412,75 @@ export default function AppointmentsClient({
                   <p className="text-sm font-semibold text-foreground">{selectedApt.patients?.full_name ?? "Sin nombre"}</p>
                 </div>
 
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha y hora</p>
-                  <p className="text-sm text-foreground">
-                    {format(new Date(selectedApt.scheduled_at), "EEEE, d 'de' MMMM yyyy · HH:mm", { locale: es })}
-                  </p>
-                </div>
-
                 {isEditing ? (
-                  <div className="space-y-4 pt-2">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Fecha</Label>
+                        <input
+                          type="date"
+                          min={todayStr}
+                          value={editValues.date}
+                          onChange={(e) => setEditValues((v) => ({ ...v, date: e.target.value, time: "" }))}
+                          className="w-full h-10 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Hora</Label>
+                        <TimeSlotPicker
+                          date={editValues.date}
+                          value={editValues.time}
+                          onChange={(t) => setEditValues((v) => ({ ...v, time: t }))}
+                          excludeId={selectedApt.id}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Duración</Label>
+                        <Select
+                          value={editValues.duration_minutes}
+                          onValueChange={(v) => setEditValues((vals) => ({ ...vals, duration_minutes: v }))}
+                        >
+                          <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium">Servicio</Label>
+                        <Select
+                          value={editValues.service_id}
+                          onValueChange={(v) => setEditValues((vals) => ({ ...vals, service_id: v }))}
+                        >
+                          <SelectTrigger className="h-10 text-sm">
+                            <SelectValue placeholder={services.length === 0 ? "Sin servicios" : "Seleccionar..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((s) => (
+                              <SelectItem key={s.id} value={s.id} textValue={s.name}>
+                                <span className="flex items-center justify-between gap-3 w-full min-w-0">
+                                  <span className="truncate">{s.name}</span>
+                                  <span className="text-muted-foreground text-xs shrink-0">
+                                    {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(s.cost)}
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Estado de la cita</Label>
-                      <Select 
-                        value={editValues.status} 
-                        onValueChange={(v) => setEditValues({ ...editValues, status: v as AppointmentStatus })}
+                      <Label className="text-xs font-medium">Estado</Label>
+                      <Select
+                        value={editValues.status}
+                        onValueChange={(v) => setEditValues((vals) => ({ ...vals, status: v as AppointmentStatus }))}
                       >
-                        <SelectTrigger className="w-full h-10"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([value, label]) => (
                             <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -363,13 +489,23 @@ export default function AppointmentsClient({
                       </Select>
                     </div>
 
-                    <div className="flex gap-2 pt-4">
-                      <Button 
-                        onClick={handleSaveChanges} 
-                        disabled={isUpdatingStatus}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Notas</Label>
+                      <Textarea
+                        value={editValues.notes}
+                        onChange={(e) => setEditValues((vals) => ({ ...vals, notes: e.target.value }))}
+                        rows={3}
+                        className="text-sm resize-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        onClick={handleSaveChanges}
+                        disabled={isSaving}
                         className="flex-1 h-10 text-xs font-bold bg-foreground text-background"
                       >
-                        {isUpdatingStatus ? "Guardando..." : "Guardar cambios"}
+                        {isSaving ? "Guardando..." : "Guardar cambios"}
                       </Button>
                       <Button variant="ghost" onClick={() => setIsEditing(false)} className="h-10 text-xs">
                         Cancelar
@@ -378,6 +514,14 @@ export default function AppointmentsClient({
                   </div>
                 ) : (
                   <>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha y hora</p>
+                      <p className="text-sm text-foreground">
+                        {format(new Date(selectedApt.scheduled_at), "EEEE, d 'de' MMMM yyyy · HH:mm", { locale: es })}
+                        <span className="text-muted-foreground"> · {selectedApt.duration_minutes} min</span>
+                      </p>
+                    </div>
+
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Servicio</p>
                       <p className="text-sm text-foreground">{selectedApt.service ?? "—"}</p>
@@ -401,20 +545,19 @@ export default function AppointmentsClient({
                     )}
 
                     <div className="pt-6 border-t border-border space-y-3">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsEditing(true)} 
+                      <Button
+                        variant="outline"
+                        onClick={enterEditMode}
                         className="w-full h-10 text-xs gap-2"
                       >
-                        Cambiar estado
+                        Editar cita
                       </Button>
-                      <Button 
-                        onClick={() => handleSendReminder(selectedApt.id, selectedApt.patients?.full_name ?? "Paciente")}
-                        disabled={remindingId === selectedApt.id}
-                        className="w-full h-10 text-xs gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                      <Button
+                        disabled
+                        className="w-full h-10 text-xs gap-2 bg-muted text-muted-foreground font-medium cursor-not-allowed"
                       >
-                        <Bell className={cn("w-4 h-4", remindingId === selectedApt.id && "animate-pulse")} />
-                        {remindingId === selectedApt.id ? "Enviando..." : "Enviar recordatorio WhatsApp"}
+                        <Bell className="w-4 h-4" />
+                        Próximamente recordatorios en WhatsApp
                       </Button>
                     </div>
                   </>

@@ -16,6 +16,8 @@ export type User = {
   created_at: string;
 };
 
+export type StaffMember = User & { email: string };
+
 export type Patient = {
   id: string;
   clinic_id: string;
@@ -42,9 +44,23 @@ export type Appointment = {
   duration_minutes: number;
   status: AppointmentStatus;
   service?: string;
+  service_id?: string | null;
+  cost_at_booking?: number | null;
   notes?: string;
   source: "whatsapp" | "web" | "manual";
   n8n_execution_id?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Service = {
+  id: string;
+  clinic_id: string;
+  name: string;
+  description?: string | null;
+  cost: number;
+  color: string;
+  active: boolean;
   created_at: string;
   updated_at: string;
 };

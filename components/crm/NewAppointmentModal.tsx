@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,25 +13,33 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNewAppointment } from "@/components/crm/NewAppointmentContext";
-import type { Patient } from "@/types/database";
+import { TimeSlotPicker } from "@/components/crm/TimeSlotPicker";
+import type { Patient, Service } from "@/types/database";
 
 const schema = z.object({
   patient_id:       z.string().min(1, "Selecciona un paciente"),
   date:             z.string().min(1, "La fecha es requerida"),
   time:             z.string().min(1, "La hora es requerida"),
   duration_minutes: z.string(),
-  service:          z.string().min(1, "El servicio es requerido"),
+  service_id:       z.string().min(1, "El servicio es requerido"),
   notes:            z.string().optional(),
-});
+}).refine(
+  (data) => new Date(`${data.date}T${data.time}`).getTime() > Date.now(),
+  { message: "La fecha y hora deben ser futuras", path: ["time"] }
+);
 type FormValues = z.infer<typeof schema>;
 
-const SERVICES  = ["Limpieza", "Ortodoncia", "Extracción", "Revisión general", "Blanqueamiento", "Emergencia"];
 const DURATIONS = [
-  { value: "15", label: "15 minutos" },
-  { value: "30", label: "30 minutos" },
-  { value: "45", label: "45 minutos" },
-  { value: "60", label: "1 hora" },
-  { value: "90", label: "1.5 horas" },
+  { value: "15",  label: "15 minutos" },
+  { value: "30",  label: "30 minutos" },
+  { value: "45",  label: "45 minutos" },
+  { value: "60",  label: "1 hora" },
+  { value: "90",  label: "1.5 horas" },
+  { value: "120", label: "2 horas" },
+  { value: "150", label: "2.5 horas" },
+  { value: "180", label: "3 horas" },
+  { value: "210", label: "3.5 horas" },
+  { value: "240", label: "4 horas" },
 ];
 
 type PatientResult = Pick<Patient, "id" | "full_name" | "phone">;
@@ -42,35 +51,75 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
   const [patientQuery, setPatientQuery]       = useState("");
   const [patientResults, setPatientResults]   = useState<PatientResult[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PatientResult | null>(null);
+  const [isSearching, setIsSearching]         = useState(false);
+  const [dropdownOpen, setDropdownOpen]       = useState(false);
   const [showCreate, setShowCreate]           = useState(false);
   const [newPatient, setNewPatient]           = useState({ full_name: "", phone: "" });
   const [isCreating, setIsCreating]           = useState(false);
   const [isSubmitting, setIsSubmitting]       = useState(false);
   const [submitError, setSubmitError]         = useState<string | null>(null);
+  const [services, setServices]               = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<FormValues>({
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
+
+  const { register, handleSubmit, setValue, reset, watch, trigger, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { duration_minutes: "30", service: "" },
+    defaultValues: { duration_minutes: "30", service_id: "" },
+    mode: "onBlur",
+    reValidateMode: "onChange",
   });
 
+  useEffect(() => {
+    if (!open) return;
+    setLoadingServices(true);
+    fetch("/api/services?active=true")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: Service[]) => setServices(Array.isArray(data) ? data : []))
+      .catch(() => setServices([]))
+      .finally(() => setLoadingServices(false));
+  }, [open]);
+
+  const selectedDate = watch("date");
+  const selectedTime = watch("time");
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const currentTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const minTime = selectedDate === todayStr ? currentTimeStr : undefined;
+
   const searchPatients = useCallback(async (q: string) => {
-    if (q.length < 2) { setPatientResults([]); return; }
+    if (q.length < 1) { setPatientResults([]); setIsSearching(false); return; }
+    setIsSearching(true);
     try {
       const res = await fetch(`/api/patients?q=${encodeURIComponent(q)}&clinic_id=${clinicId}`);
       if (res.ok) setPatientResults(await res.json() as PatientResult[]);
     } catch { /* ignore */ }
+    finally { setIsSearching(false); }
   }, [clinicId]);
 
   useEffect(() => {
-    const t = setTimeout(() => searchPatients(patientQuery), 300);
+    if (patientQuery.length >= 1 && !selectedPatient) setIsSearching(true);
+    const t = setTimeout(() => searchPatients(patientQuery), 250);
     return () => clearTimeout(t);
-  }, [patientQuery, searchPatients]);
+  }, [patientQuery, searchPatients, selectedPatient]);
 
   const selectPatient = (p: PatientResult) => {
     setSelectedPatient(p);
     setValue("patient_id", p.id);
     setPatientQuery(p.full_name);
     setPatientResults([]);
+    setDropdownOpen(false);
   };
 
   const handleCreatePatient = async () => {
@@ -96,6 +145,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
     setSubmitError(null);
     try {
       const scheduled_at = new Date(`${values.date}T${values.time}`).toISOString();
+      const selectedService = services.find((s) => s.id === values.service_id);
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,7 +154,9 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
           clinic_id: clinicId,
           scheduled_at,
           duration_minutes: parseInt(values.duration_minutes),
-          service: values.service,
+          service: selectedService?.name ?? null,
+          service_id: values.service_id,
+          cost_at_booking: selectedService?.cost ?? null,
           notes: values.notes ?? "",
           source: "manual",
           status: "pending",
@@ -148,41 +200,59 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
           {/* Patient search */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Paciente</Label>
-            <div className="relative">
+            <div className="relative" ref={searchContainerRef}>
               <Input
                 value={patientQuery}
                 onChange={(e) => {
                   setPatientQuery(e.target.value);
                   setSelectedPatient(null);
                   setValue("patient_id", "");
+                  setDropdownOpen(true);
                 }}
+                onFocus={() => { if (patientQuery.length >= 1 && !selectedPatient) setDropdownOpen(true); }}
                 placeholder="Buscar por nombre..."
                 className="h-10 md:h-9 text-sm"
               />
-              {patientResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-[60] mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden max-h-48 overflow-y-auto">
-                  {patientResults.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => selectPatient(p)}
-                      className="w-full text-left px-3 py-2.5 md:py-2 text-sm hover:bg-accent transition-colors border-b border-border last:border-0"
-                    >
-                      <span className="font-medium text-foreground block md:inline">{p.full_name}</span>
-                      {p.phone && <span className="text-muted-foreground md:ml-2 text-xs">{p.phone}</span>}
-                    </button>
-                  ))}
+              {dropdownOpen && patientQuery.length >= 1 && !selectedPatient && (
+                <div className="absolute top-full left-0 right-0 z-[60] mt-1.5 bg-muted/95 dark:bg-zinc-900 border border-border rounded-lg shadow-xl overflow-hidden max-h-72 overflow-y-auto backdrop-blur-sm">
+                  {isSearching ? (
+                    <div className="flex items-center justify-center gap-2 px-3 py-5 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Buscando...
+                    </div>
+                  ) : patientResults.length === 0 ? (
+                    <div className="px-3 py-5 text-xs text-muted-foreground text-center">
+                      Sin coincidencias
+                    </div>
+                  ) : (
+                    patientResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => selectPatient(p)}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-accent active:bg-accent/80 transition-colors border-b border-border/60 last:border-0 flex flex-col gap-0.5"
+                      >
+                        <span className="font-semibold text-foreground">{p.full_name}</span>
+                        {p.phone && <span className="text-muted-foreground text-xs">{p.phone}</span>}
+                      </button>
+                    ))
+                  )}
                   <button
                     type="button"
-                    onClick={() => { setShowCreate(true); setPatientResults([]); setNewPatient({ full_name: patientQuery, phone: "" }); }}
-                    className="w-full text-left px-3 py-2.5 md:py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-accent border-t border-border transition-colors font-medium"
+                    onClick={() => {
+                      setShowCreate(true);
+                      setPatientResults([]);
+                      setDropdownOpen(false);
+                      setNewPatient({ full_name: patientQuery, phone: "" });
+                    }}
+                    className="w-full text-left px-4 py-3 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-accent active:bg-accent/80 border-t-2 border-border transition-colors font-semibold"
                   >
                     + Crear paciente nuevo
                   </button>
                 </div>
               )}
             </div>
-            {errors.patient_id && <p className="text-xs text-red-500">{errors.patient_id.message}</p>}
+            <p className="text-xs text-red-500 min-h-[1rem] leading-4">{errors.patient_id?.message ?? " "}</p>
 
             {showCreate && (
               <div className="mt-2 p-3 bg-muted/50 border border-border rounded-md space-y-3">
@@ -217,19 +287,23 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
               <Label className="text-xs font-medium">Fecha</Label>
               <input
                 type="date"
-                {...register("date")}
+                min={todayStr}
+                {...register("date", { onBlur: () => trigger(["date", "time"]) })}
                 className="w-full h-10 md:h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
               />
-              {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
+              <p className="text-xs text-red-500 min-h-[1rem] leading-4">{errors.date?.message ?? " "}</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Hora</Label>
-              <input
-                type="time"
-                {...register("time")}
-                className="w-full h-10 md:h-9 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
+              <input type="hidden" {...register("time")} />
+              <TimeSlotPicker
+                date={selectedDate ?? ""}
+                value={selectedTime ?? ""}
+                onChange={(t) => { setValue("time", t, { shouldValidate: true }); trigger(["date", "time"]); }}
+                onBlur={() => trigger(["date", "time"])}
+                minTime={minTime}
               />
-              {errors.time && <p className="text-xs text-red-500">{errors.time.message}</p>}
+              <p className="text-xs text-red-500 min-h-[1rem] leading-4">{errors.time?.message ?? " "}</p>
             </div>
           </div>
 
@@ -247,13 +321,22 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Servicio</Label>
-              <Select onValueChange={(v) => setValue("service", v)}>
-                <SelectTrigger className="h-10 md:h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <Select onValueChange={(v) => setValue("service_id", v, { shouldValidate: true })} disabled={loadingServices}>
+                <SelectTrigger className="h-10 md:h-9 text-sm"><SelectValue placeholder={loadingServices ? "Cargando..." : services.length === 0 ? "Sin servicios — crea uno primero" : "Seleccionar..."} /></SelectTrigger>
                 <SelectContent>
-                  {SERVICES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {services.map((s) => (
+                    <SelectItem key={s.id} value={s.id} textValue={s.name}>
+                      <span className="flex items-center justify-between gap-3 w-full min-w-0">
+                        <span className="truncate">{s.name}</span>
+                        <span className="text-muted-foreground text-xs shrink-0">
+                          {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(s.cost)}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {errors.service && <p className="text-xs text-red-500">{errors.service.message}</p>}
+              <p className="text-xs text-red-500 min-h-[1rem] leading-4">{errors.service_id?.message ?? " "}</p>
             </div>
           </div>
 
@@ -263,7 +346,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
             <Textarea {...register("notes")} placeholder="Observaciones adicionales..." rows={3} className="text-sm resize-none" />
           </div>
 
-          {submitError && <p className="text-xs text-red-500">{submitError}</p>}
+          <p className="text-xs text-red-500 min-h-[1rem] leading-4">{submitError ?? " "}</p>
 
           <div className="flex flex-col-reverse xs:flex-row justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" size="sm" onClick={handleClose} className="h-10 md:h-8 text-xs">Cancelar</Button>
