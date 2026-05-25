@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format as formatDateFn } from "date-fns";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import type { Appointment, AppointmentStatus, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {
@@ -52,10 +53,14 @@ const PAGE_SIZE = 10;
 
 export default function AppointmentsClient({
   appointments: initialAppointments,
+  clinicId,
+  userId,
+  clinicName,
 }: {
   appointments: AppointmentWithPatient[];
   clinicId: string;
   userId: string;
+  clinicName: string;
 }) {
   const router = useRouter();
   const [viewMode, setViewMode]         = useState<ViewMode>("calendar");
@@ -63,7 +68,47 @@ export default function AppointmentsClient({
 
   useEffect(() => {
     _setAppointments(initialAppointments);
-  }, [initialAppointments]);
+    
+    if (!clinicId) return;
+
+    // Configurar suscripción a cambios en tiempo real desde Supabase
+    const supabase = createClient();
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'appointments',
+          filter: `clinic_id=eq.${clinicId}`
+        },
+        async (payload) => {
+          console.log("Nueva cita recibida vía Realtime:", payload.new);
+          // Opcional: Obtener los datos del paciente para que se muestre el nombre completo
+          // Ya que el payload de 'appointments' solo trae el patient_id
+          const { data: patient } = await supabase
+            .from('patients')
+            .select('full_name, phone')
+            .eq('id', payload.new.patient_id)
+            .single();
+
+          const newAppointment = {
+            ...payload.new,
+            patients: patient || { full_name: "Paciente Nuevo", phone: null },
+            services: null // Asumimos color default si no se joinea
+          } as AppointmentWithPatient;
+          
+          _setAppointments(prev => [...prev, newAppointment]);
+          toast.success(`Nueva cita agendada: ${patient?.full_name || 'Paciente'}`);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [initialAppointments, clinicId]);
 
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -408,6 +453,7 @@ export default function AppointmentsClient({
                           value={editValues.time}
                           onChange={(t) => setEditValues((v) => ({ ...v, time: t }))}
                           excludeId={selectedApt.id}
+                          branchName={clinicName}
                         />
                       </div>
                     </div>

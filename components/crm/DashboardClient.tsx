@@ -5,17 +5,72 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, subDays, isWithin
 import { es } from "date-fns/locale";
 import { KpiCard } from "@/components/crm/KpiCard";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { KpiDetailsModal } from "@/components/crm/KpiDetailsModal";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import type { Appointment, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {
   patients: Pick<Patient, "full_name" | "phone"> | null;
 };
 
-export function DashboardClient({ appointments }: { appointments: AppointmentWithPatient[] }) {
+interface DashboardClientProps {
+  appointments: AppointmentWithPatient[];
+  clinicId: string;
+}
+
+export function DashboardClient({ appointments: initialAppointments, clinicId }: DashboardClientProps) {
   const [activeModal, setActiveModal] = useState<{ title: string; appointments: AppointmentWithPatient[] } | null>(null);
+  const [appointments, setAppointments] = useState(initialAppointments);
+
+  // Sync with real-time database changes
+  useEffect(() => {
+    setAppointments(initialAppointments);
+    
+    if (!clinicId) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchamos INSERT, UPDATE y DELETE
+          schema: 'public',
+          table: 'appointments',
+          filter: `clinic_id=eq.${clinicId}`
+        },
+        async (payload) => {
+          console.log("Cambio detectado en Dashboard:", payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const { data: patient } = await supabase
+              .from('patients')
+              .select('full_name, phone')
+              .eq('id', payload.new.patient_id)
+              .single();
+
+            const newAppt = {
+              ...payload.new,
+              patients: patient || { full_name: "Paciente Nuevo", phone: null }
+            } as AppointmentWithPatient;
+            
+            setAppointments(prev => [...prev, newAppt]);
+          } else if (payload.eventType === 'UPDATE') {
+            setAppointments(prev => prev.map(a => a.id === payload.new.id ? { ...a, ...payload.new } : a));
+          } else if (payload.eventType === 'DELETE') {
+            setAppointments(prev => prev.filter(a => a.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [initialAppointments, clinicId]);
 
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -121,7 +176,7 @@ export function DashboardClient({ appointments }: { appointments: AppointmentWit
                       </p>
                       <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-1 uppercase tracking-wider transition-colors">
                         {format(new Date(apt.scheduled_at), "HH:mm", { locale: es })}
-                        {apt.service && <span className="text-[var(--brand-accent)]"> · {apt.service}</span>}
+                        {apt.service && <span className="text-[var(--brand-accent)]">[{apt.service}]</span>}
                       </p>
                     </div>
                   </div>

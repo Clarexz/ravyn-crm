@@ -4,7 +4,7 @@ import { subDays, startOfDay } from "date-fns";
 
 export default async function DashboardPage() {
   const ctx = await getClinicContext();
-  if (!ctx) return <DashboardClient appointments={[]} />;
+  if (!ctx) return <DashboardClient appointments={[]} clinicId="" />;
 
   const since = startOfDay(subDays(new Date(), 30)).toISOString();
 
@@ -15,5 +15,5 @@ export default async function DashboardPage() {
     .gte("scheduled_at", since)
     .order("scheduled_at", { ascending: true });
 
-  return <DashboardClient appointments={appointments ?? []} />;
+  return <DashboardClient appointments={appointments ?? []} clinicId={ctx.clinicId} />;
 }

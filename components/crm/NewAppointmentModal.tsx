@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, UserPlus, Info } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNewAppointment } from "@/components/crm/NewAppointmentContext";
 import { TimeSlotPicker } from "@/components/crm/TimeSlotPicker";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Patient, Service } from "@/types/database";
 
 const schema = z.object({
@@ -43,9 +43,9 @@ const DURATIONS = [
   { value: "240", label: "4 horas" },
 ];
 
-type PatientResult = Pick<Patient, "id" | "full_name" | "phone">;
+type PatientResult = Pick<Patient, "id" | "full_name" | "phone" | "email">;
 
-export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
+export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string; clinicName: string }) {
   const { open, setOpen } = useNewAppointment();
   const router = useRouter();
 
@@ -142,11 +142,18 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
   };
 
   const onSubmit = async (values: FormValues) => {
+    if (!selectedPatient) {
+      toast.error("Selecciona un paciente válido");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
       const scheduled_at = new Date(`${values.date}T${values.time}`).toISOString();
       const selectedService = services.find((s) => s.id === values.service_id);
+      
+      // 1. Save to local database
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,35 +170,50 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
           status: "pending",
         }),
       });
+
       if (!res.ok) {
         const err = await res.json() as { error?: string };
-        setSubmitError(err.error ?? "Error al crear la cita");
+        setSubmitError(err.error ?? "Error al crear la cita localmente");
         return;
       }
+
+      // 2. Trigger n8n Automation Webhook
+      try {
+        await fetch("https://n8n.srv1574981.hstgr.cloud/webhook/agendar-cita-reynosa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name:     selectedPatient.full_name,
+            phone:    selectedPatient.phone || "—",
+            email:    selectedPatient.email || "—",
+            branch:   clinicName,
+            service:  selectedService?.name || "Consulta General",
+            date:     values.date,
+            time:     values.time
+          }),
+        });
+        console.log("n8n automation triggered successfully");
+      } catch (n8nError) {
+        console.error("n8n trigger failed:", n8nError);
+      }
+
       reset();
       setSelectedPatient(null);
       setPatientQuery("");
       setOpen(false);
+      toast.success("Cita agendada y sincronizada correctamente");
+      
+      // Update UI immediately
       router.refresh();
-    } catch {
-      setSubmitError("Error inesperado. Intenta de nuevo.");
+    } catch (err) {
+      console.error("Submit error:", err);
+      setSubmitError("Error inesperado al procesar la cita.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    reset();
-    setSelectedApt(null); // Wait, this variable is not in this component
-    setPatientQuery("");
-    setPatientResults([]);
-    setShowCreate(false);
-    setSubmitError(null);
-    setOpen(false);
-  };
-
-  // Fixed handleClose (setSelectedPatient instead of setSelectedApt)
-  const safeHandleClose = () => {
     reset();
     setSelectedPatient(null);
     setPatientQuery("");
@@ -206,6 +228,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
       <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none p-8 md:p-10 rounded-[40px] overflow-y-auto max-h-[90vh] shadow-2xl transition-colors">
         <DialogHeader className="mb-8">
           <DialogTitle className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tighter text-center">Agendar Cita</DialogTitle>
+          <DialogDescription className="text-center text-xs text-[var(--text-secondary)]">Completa los datos para registrar la nueva visita en la agenda.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
@@ -319,6 +342,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
                 onChange={(t) => { setValue("time", t, { shouldValidate: true }); trigger(["date", "time"]); }}
                 onBlur={() => trigger(["date", "time"])}
                 minTime={minTime}
+                branchName={clinicName}
               />
               <p className="text-[10px] text-[var(--destructive)] font-bold uppercase px-2">{errors.time?.message ?? ""}</p>
             </div>
@@ -330,7 +354,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
               <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest px-1">Duración</Label>
               <Select defaultValue="30" onValueChange={(v) => setValue("duration_minutes", v)}>
                 <SelectTrigger className="h-12 text-sm font-bold bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl px-5 text-[var(--text-primary)] shadow-sm transition-all"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)]">
+                <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)]">
                   {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -340,7 +364,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
               <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest px-1">Tratamiento</Label>
               <Select onValueChange={(v) => setValue("service_id", v, { shouldValidate: true })} disabled={loadingServices}>
                 <SelectTrigger className="h-12 text-sm font-bold bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl px-5 text-[var(--text-primary)] shadow-sm transition-all"><SelectValue placeholder={loadingServices ? "Cargando..." : "Seleccionar..."} /></SelectTrigger>
-                <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)]">
+                <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)]">
                   {services.map((s) => (
                     <SelectItem key={s.id} value={s.id} textValue={s.name}>
                       <span className="flex items-center justify-between gap-3 w-full min-w-0">
@@ -370,7 +394,7 @@ export function NewAppointmentModal({ clinicId }: { clinicId: string }) {
               type="button" 
               variant="outline" 
               size="sm" 
-              onClick={safeHandleClose} 
+              onClick={handleClose} 
               className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] border-[var(--border-default)] bg-[var(--bg-page)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 hover:border-[var(--destructive)] rounded-2xl transition-all"
             >
               Cerrar

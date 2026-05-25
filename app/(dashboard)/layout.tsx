@@ -45,7 +45,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
       </div>
-      <NewAppointmentModal clinicId={clinicId} />
+      <NewAppointmentModal clinicId={clinicId} clinicName={clinicName} />
     </NewAppointmentProvider>
   );
 }
