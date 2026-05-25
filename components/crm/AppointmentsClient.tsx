@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell, Clock, Tag, ExternalLink, X } from "lucide-react";
+import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell, Clock, Tag, ExternalLink } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -54,7 +54,6 @@ const PAGE_SIZE = 10;
 export default function AppointmentsClient({
   appointments: initialAppointments,
   clinicId,
-  userId,
   clinicName,
 }: {
   appointments: AppointmentWithPatient[];
@@ -452,7 +451,6 @@ export default function AppointmentsClient({
                           date={editValues.date}
                           value={editValues.time}
                           onChange={(t) => setEditValues((v) => ({ ...v, time: t }))}
-                          excludeId={selectedApt.id}
                           branchName={clinicName}
                         />
                       </div>

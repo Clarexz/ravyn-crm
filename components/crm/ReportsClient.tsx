@@ -152,7 +152,6 @@ export default function ReportsClient({ appointments, patients }: ReportsClientP
   if (!mounted) return null;
 
   const chartStroke = isDark ? "#38BDF8" : "#0284C7";
-  const chartFill = isDark ? "rgba(56, 189, 248, 0.10)" : "rgba(2, 132, 199, 0.08)";
   const axisColor = isDark ? "rgba(255, 255, 255, 0.4)" : colors.secondary;
 
   return (

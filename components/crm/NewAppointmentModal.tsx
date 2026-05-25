@@ -96,8 +96,6 @@ export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string
   const selectedTime = watch("time");
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const currentTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const minTime = selectedDate === todayStr ? currentTimeStr : undefined;
 
   const searchPatients = useCallback(async (q: string) => {
     if (q.length < 1) { setPatientResults([]); setIsSearching(false); return; }
@@ -341,7 +339,6 @@ export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string
                 value={selectedTime ?? ""}
                 onChange={(t) => { setValue("time", t, { shouldValidate: true }); trigger(["date", "time"]); }}
                 onBlur={() => trigger(["date", "time"])}
-                minTime={minTime}
                 branchName={clinicName}
               />
               <p className="text-[10px] text-[var(--destructive)] font-bold uppercase px-2">{errors.time?.message ?? ""}</p>

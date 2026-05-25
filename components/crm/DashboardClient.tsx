@@ -5,11 +5,10 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, subDays, isWithin
 import { es } from "date-fns/locale";
 import { KpiCard } from "@/components/crm/KpiCard";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { KpiDetailsModal } from "@/components/crm/KpiDetailsModal";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
 import type { Appointment, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {

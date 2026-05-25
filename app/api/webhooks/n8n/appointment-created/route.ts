@@ -136,8 +136,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, appointment });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error procesando webhook de n8n:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

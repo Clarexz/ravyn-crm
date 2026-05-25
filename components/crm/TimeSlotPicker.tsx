@@ -2,19 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Loader2, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface Props {
   date: string;
   value: string;
   onChange: (time: string) => void;
   onBlur?: () => void;
-  minTime?: string;
   disabled?: boolean;
   branchName?: string;
 }
 
-export function TimeSlotPicker({ date, value, onChange, onBlur, minTime, disabled, branchName = "Sucursal Centro" }: Props) {
+export function TimeSlotPicker({ date, value, onChange, onBlur, disabled, branchName = "Sucursal Centro" }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -35,7 +33,7 @@ export function TimeSlotPicker({ date, value, onChange, onBlur, minTime, disable
         console.log("n8n raw data:", data);
 
         // DEEP EXTRACTION LOGIC
-        const extractTimeStrings = (input: any): string[] => {
+        const extractTimeStrings = (input: unknown): string[] => {
           if (!input) return [];
 
           // If it's a string, check if it's a time value or a list
@@ -70,16 +68,17 @@ export function TimeSlotPicker({ date, value, onChange, onBlur, minTime, disable
 
           // If it's an object
           if (typeof input === 'object') {
+            const obj = input as Record<string, unknown>;
             const possibleKeys = ['availableSlots', 'aviabeskits', 'horarios', 'available_slots', 'slots', 'data'];
             for (const key of possibleKeys) {
-              if (input[key]) {
-                const res = extractTimeStrings(input[key]);
+              if (obj[key]) {
+                const res = extractTimeStrings(obj[key]);
                 if (res.length > 0) return res;
               }
             }
 
             // Fallback: search all object values
-            for (const val of Object.values(input)) {
+            for (const val of Object.values(obj)) {
               if (val && (Array.isArray(val) || typeof val === 'object' || typeof val === 'string')) {
                 const res = extractTimeStrings(val);
                 if (res.length > 0) return res;

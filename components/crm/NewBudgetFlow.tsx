@@ -231,8 +231,8 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
       toast.success(status === 'draft' ? "Borrador guardado" : "Presupuesto creado correctamente");
       router.push("/budgets");
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setIsSaving(false);
     }

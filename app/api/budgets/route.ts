@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
-import type { BudgetStatus } from "@/types/database";
 
 export async function POST(request: NextRequest) {
   const ctx = await getClinicContext();
@@ -65,7 +64,13 @@ export async function POST(request: NextRequest) {
       if (memberError) throw memberError;
 
       if (member.services && member.services.length > 0) {
-        const servicesToInsert = member.services.map((s: any) => ({
+        const servicesToInsert = member.services.map((s: {
+          service_id?: string | null;
+          name: string;
+          sessions: number;
+          unit_price: number;
+          is_manual_price: boolean;
+        }) => ({
           budget_member_id: insertedMember.id,
           service_id: s.service_id || null,
           name: s.name,
@@ -84,13 +89,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, budgetId: budget.id });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/budgets] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
@@ -110,8 +116,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json(data || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/budgets] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

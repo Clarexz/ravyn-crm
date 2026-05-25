@@ -59,7 +59,7 @@ export function BudgetDetailsClient({ budget: initialBudget }: BudgetDetailsClie
       setBudget({ ...budget, status: "accepted" });
       toast.success("Presupuesto marcado como aceptado");
       router.refresh();
-    } catch (err) {
+    } catch {
       toast.error("Error al actualizar el estado");
     } finally {
       setIsUpdating(false);
