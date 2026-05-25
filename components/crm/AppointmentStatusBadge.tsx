@@ -1,54 +1,41 @@
-import { Badge } from "@/components/ui/badge";
+"use client";
+
 import { cn } from "@/lib/utils";
-import type { AppointmentStatus } from "@/types/database";
 
-interface AppointmentStatusBadgeProps {
-  status: AppointmentStatus;
-  className?: string;
-}
-
-const statusConfig: Record<
-  AppointmentStatus,
-  { label: string; className: string }
-> = {
-  pending: {
-    label: "Pendiente",
-    className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/20",
-  },
-  confirmed: {
-    label: "Confirmada",
-    className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20",
-  },
-  cancelled: {
-    label: "Cancelada",
-    className: "bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/20",
-  },
-  completed: {
-    label: "Completada",
-    className: "bg-gray-500/15 text-gray-400 border-gray-500/30 hover:bg-gray-500/20",
-  },
-  no_show: {
-    label: "No show",
-    className: "bg-orange-500/15 text-orange-400 border-orange-500/30 hover:bg-orange-500/20",
-  },
+const STATUS_LABELS: Record<string, string> = {
+  pending:   "Pendiente",
+  confirmed: "Confirmada",
+  cancelled: "Cancelada",
+  completed: "Completada",
+  no_show:   "No show",
 };
 
-export function AppointmentStatusBadge({
-  status,
-  className,
-}: AppointmentStatusBadgeProps) {
-  const config = statusConfig[status];
+export function AppointmentStatusBadge({ status }: { status: string }) {
+  const getStatusStyles = (s: string) => {
+    switch (s) {
+      case "pending":
+        return "bg-[var(--state-pending-bg)] text-[var(--state-pending-text)]";
+      case "confirmed":
+        return "bg-[var(--state-confirmed-bg)] text-[var(--state-confirmed-text)]";
+      case "cancelled":
+      case "no_show":
+        return "bg-[var(--state-cancelled-bg)] text-[var(--state-cancelled-text)]";
+      case "completed":
+        return "bg-[var(--state-completed-bg)] text-[var(--state-completed-text)]";
+      default:
+        return "bg-slate-100 text-slate-600";
+    }
+  };
 
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        "text-xs font-medium border px-2 py-0.5",
-        config.className,
-        className
+        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shrink-0",
+        "dark:bg-opacity-20 dark:backdrop-blur-sm",
+        getStatusStyles(status)
       )}
     >
-      {config.label}
-    </Badge>
+      {STATUS_LABELS[status] || status}
+    </span>
   );
 }

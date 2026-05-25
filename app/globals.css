@@ -3,182 +3,353 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme */
   :root {
-    color-scheme: light;
-    --background: 0 0% 97%;
-    --foreground: 0 0% 9%;
+    /* Backgrounds */
+    --bg-page: #EEF2F7;
+    --bg-surface: #FFFFFF; /* Pure white for main canvas */
+    --bg-card: #F8FAFC;    /* Subtle off-white for internal cards */
+    --bg-card-hover: #F1F5F9;
+    --bg-input: #FFFFFF;
+
+    /* Sidebar */
+    --sidebar-bg: #1A2E45;
+    --sidebar-text: #94A3B8;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-item-active-bg: rgba(255, 255, 255, 0.1);
+
+    /* Text */
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+
+    /* Borders */
+    --border-default: #E2E8F0;
+    --border-strong: #CBD5E1;
+
+    /* Brand / Accent (The dental blue) */
+    --brand-accent: #0284C7;
+    --brand-accent-hover: #0369A1;
+    --brand-accent-bg: rgba(2, 132, 199, 0.15);
+    --brand-accent-text: #075985;
+
+    /* Semantic States */
+    --state-pending-bg: #FEF3C7;
+    --state-pending-text: #92400E;
+    --state-confirmed-bg: #D1FAE5;
+    --state-confirmed-text: #065F46;
+    --state-cancelled-bg: #FEE2E2;
+    --state-cancelled-text: #991B1B;
+    --state-completed-bg: #EDE9FE;
+    --state-completed-text: #4C1D95;
+
+    /* Shadcn compatibility mapping (HSL) */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 92%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 92%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 92%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 45%;
-    --radius: 0.5rem;
+    --popover-foreground: 222 47% 11%;
+    --primary: 201 98% 39%; /* #0284C7 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 201 98% 39%;
+    --radius: 1rem;
   }
 
-  /* Dark theme */
   .dark {
-    color-scheme: dark;
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 60%;
-    --radius: 0.5rem;
+    /* Backgrounds */
+    --bg-page: #0A1628;    /* Matches Sidebar for Frame effect */
+    --bg-surface: #162032; /* The surrounded main canvas */
+    --bg-card: #1E2D3D;    /* Lighter for floating cards */
+    --bg-card-hover: #243447;
+    --bg-input: #0F1E2E;
+
+    /* Sidebar */
+    --sidebar-bg: #0A1628;
+    --sidebar-text: #64748B;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-item-active-bg: rgba(255, 255, 255, 0.08);
+
+    /* Text */
+    --text-primary: #E2EEFF;
+    --text-secondary: #7FA3C4;
+    --text-muted: #3D5A73;
+
+    /* Borders */
+    --border-default: #1E3347;
+    --border-strong: #2A4560;
+
+    /* Brand / Accent - Harmonious Blue */
+    --brand-accent: #0284C7;
+    --brand-accent-hover: #0369A1;
+    --brand-accent-bg: rgba(2, 132, 199, 0.15);
+    --brand-accent-text: #38BDF8;
+
+    /* Semantic States */
+    --state-pending-bg: rgba(251, 191, 36, 0.12);
+    --state-pending-text: #FCD34D;
+    --state-confirmed-bg: rgba(16, 185, 129, 0.12);
+    --state-confirmed-text: #6EE7B7;
+    --state-cancelled-bg: rgba(239, 68, 68, 0.12);
+    --state-cancelled-text: #FCA5A5;
+    --state-completed-bg: rgba(139, 92, 246, 0.12);
+    --state-completed-text: #C4B5FD;
+
+    /* Shadcn compatibility mapping (HSL) */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 201 98% 39%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 201 98% 39%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    user-select: none;
+    -webkit-user-drag: none;
   }
+
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+
   html, body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--sidebar-bg);
+    color: var(--text-primary);
   }
   body {
-    @apply antialiased;
+    @apply antialiased transition-colors duration-300;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer utilities {
+  .selectable {
+    user-select: text !important;
+  }
   .text-balance {
     text-wrap: balance;
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
-/* FullCalendar dark mode overrides */
-.dark .fc-theme-standard td,
-.dark .fc-theme-standard th,
-.dark .fc-theme-standard .fc-scrollgrid {
-  border-color: hsl(var(--border)) !important;
+/* FullCalendar High-Fidelity Refinements */
+.fc-theme-standard td,
+.fc-theme-standard th,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: var(--border-default) !important;
 }
 
-.dark .fc-col-header-cell,
-.dark .fc-timegrid-axis,
-.dark .fc-timegrid-axis-frame,
-.dark .fc-timegrid-axis-cushion,
-.dark .fc-timegrid-slot-label {
-  background-color: hsl(var(--card)) !important;
+.fc .fc-daygrid-day {
+  background-color: var(--bg-surface) !important;
+  transition: background-color 0.3s ease;
 }
 
-.dark .fc-col-header-cell-cushion,
-.dark .fc-daygrid-day-number,
-.dark .fc-timegrid-slot-label-cushion,
-.dark .fc-timegrid-axis-cushion,
-.dark .fc-list-day-text,
-.dark .fc-list-day-side-text {
-  color: hsl(var(--foreground)) !important;
+.fc .fc-daygrid-day-frame {
+  min-height: 100px !important;
+}
+
+.fc-daygrid-day-number {
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 8px !important;
   text-decoration: none !important;
 }
 
-.dark .fc-toolbar-title {
-  color: rgb(255 255 255) !important;
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
+.fc .fc-day-today .fc-daygrid-day-number,
+.fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  background-color: var(--brand-accent) !important;
+  color: #fff !important;
+  border-radius: 100px !important;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px;
 }
 
-.dark .fc-button {
-  background-color: rgb(31 41 55) !important;
-  border-color: rgb(55 65 81) !important;
-  color: rgb(209 213 219) !important;
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  padding: 0.25rem 0.625rem !important;
-  box-shadow: none !important;
+.fc-timeGridWeek-view .fc-day-today {
+  background-color: rgba(16, 185, 129, 0.04) !important;
 }
 
-.dark .fc-button:hover {
-  background-color: rgb(55 65 81) !important;
-  color: rgb(255 255 255) !important;
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: var(--text-secondary) !important;
+  text-transform: uppercase;
 }
 
-.dark .fc-button-active,
-.dark .fc-button:not(:disabled):active {
-  background-color: rgb(75 85 99) !important;
-  color: rgb(255 255 255) !important;
+.fc .fc-timegrid-axis {
+  border-right: 1px solid var(--border-default) !important;
 }
 
-.dark .fc-daygrid-day,
-.dark .fc-timegrid-col {
-  background-color: transparent !important;
+.fc-timegrid-now-indicator-line {
+  border-color: var(--brand-accent) !important;
+  border-width: 2px !important;
+  z-index: 10 !important;
+  left: 0 !important;
+  right: 0 !important;
 }
 
-.dark .fc-daygrid-day.fc-day-today,
-.dark .fc-timegrid-col.fc-day-today {
-  background-color: rgb(17 24 39 / 0.6) !important;
-}
-
-.dark .fc-timegrid-now-indicator-line {
-  border-color: rgb(99 102 241) !important;
-}
-
-.dark .fc-highlight {
-  background-color: rgb(55 65 81 / 0.4) !important;
-}
-
-.dark .fc-event {
-  border-radius: 4px !important;
-  font-size: 0.7rem !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-  transition: opacity 150ms ease, filter 150ms ease !important;
-}
-
-.fc-event:hover {
-  opacity: 0.85 !important;
-  filter: brightness(1.1) !important;
-}
-
-/* FullCalendar light mode */
-.fc-toolbar-title {
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
-}
-
-.fc-button {
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  padding: 0.25rem 0.625rem !important;
-  box-shadow: none !important;
+.fc-timegrid-now-indicator-arrow {
+  border-radius: 100px !important;
+  width: 10px !important;
+  height: 10px !important;
+  margin-top: -5px !important;
+  background-color: var(--brand-accent) !important;
+  border: 2px solid var(--bg-surface) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .fc-event {
-  border-radius: 4px !important;
-  font-size: 0.7rem !important;
-  font-weight: 500 !important;
+  border-radius: 100px !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
   cursor: pointer !important;
-  transition: opacity 150ms ease, filter 150ms ease !important;
+  transition: all 0.2s ease !important;
+}
+
+.fc-v-event {
+  border-radius: 12px !important;
 }
 
 .fc-event:hover {
-  opacity: 0.85 !important;
-  filter: brightness(1.1) !important;
+  transform: scale(1.02);
+  z-index: 20 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.fc-button-group {
+  display: flex !important;
+  gap: 0 !important;
+  background-color: var(--bg-card) !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-default) !important;
+  overflow: hidden !important;
+}
+
+.fc-button {
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-right: 1px solid var(--border-default) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 800 !important;
+  padding: 8px 16px !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+  font-size: 9px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fc-button:last-child {
+  border-right: none !important;
+}
+
+.fc-button-active {
+  background-color: var(--sidebar-bg) !important;
+  color: #fff !important;
+}
+
+.fc-button:focus, .fc-button:active {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.fc-toolbar-title {
+  font-size: 1.1rem !important;
+  font-weight: 800 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.02em;
+}
+
+/* Dark Mode Specific Calendar Overrides */
+.dark .fc-col-header-cell,
+.dark .fc-timegrid-axis {
+  background-color: #1E2D3D !important;
+  border-bottom: 1px solid var(--border-default) !important;
+}
+
+.dark .fc-day-today {
+  background-color: var(--bg-surface) !important;
+}
+
+.dark .fc-day-today .fc-col-header-cell-cushion {
+  background-color: #0284C7 !important;
+  color: #fff !important;
+  border-radius: 100px !important;
+}
+
+.dark .fc-v-event, .dark .fc-h-event {
+  background-color: rgba(56, 189, 248, 0.20) !important;
+  border: none !important;
+  border-left: 3px solid #38BDF8 !important;
+  border-radius: 4px !important;
+  padding: 1px 4px !important;
+}
+
+.dark .fc-event-main {
+  color: #E2EEFF !important;
+  font-weight: 600 !important;
+}
+
+.dark .fc-timegrid-now-indicator-line {
+  border-color: #38BDF8 !important;
+  border-width: 2px !important;
+}
+
+.dark .fc-timegrid-now-indicator-arrow {
+  background-color: #38BDF8 !important;
+  border: none !important;
+  width: 8px !important;
+  height: 8px !important;
+  margin-top: -4px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.dark .fc-theme-standard td, 
+.dark .fc-theme-standard th, 
+.dark .fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark .fc-timegrid-slot {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
 }

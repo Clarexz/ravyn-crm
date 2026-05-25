@@ -2,20 +2,17 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import {
   Select,
   SelectContent,
@@ -23,12 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Patient, Appointment } from "@/types/database";
+import type { Patient } from "@/types/database";
 
 const SOURCE_CONFIG: Record<Patient["source"], { label: string; className: string }> = {
-  whatsapp: { label: "WhatsApp", className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
-  web:      { label: "Web",      className: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
-  manual:   { label: "Manual",   className: "bg-muted text-muted-foreground border-border" },
+  whatsapp: { label: "WhatsApp", className: "bg-[var(--state-confirmed-bg)] text-[var(--state-confirmed-text)]" },
+  web:      { label: "Web",      className: "bg-blue-500/15 text-blue-600" },
+  manual:   { label: "Manual",   className: "bg-[#F1F5F9] text-[#64748B] border border-slate-200 dark:bg-white/10 dark:text-white/40 dark:border-none" },
 };
 
 interface EditablePatient { full_name: string; phone: string; email: string; notes: string }
@@ -37,13 +34,6 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
   const router = useRouter();
   const [search, setSearch]                 = useState("");
   const [sourceFilter, setSourceFilter]     = useState<string>("all");
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [sheetOpen, setSheetOpen]           = useState(false);
-  const [isEditing, setIsEditing]           = useState(false);
-  const [editValues, setEditValues]         = useState<EditablePatient>({ full_name: "", phone: "", email: "", notes: "" });
-  const [isSaving, setIsSaving]             = useState(false);
-  const [appointments, setAppointments]     = useState<Appointment[]>([]);
-  const [loadingApts, setLoadingApts]       = useState(false);
 
   const [createOpen, setCreateOpen]         = useState(false);
   const [newPatient, setNewPatient]         = useState<EditablePatient>({ full_name: "", phone: "", email: "", notes: "" });
@@ -65,22 +55,15 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newPatient, source: "manual" }),
       });
-      const raw = await res.text();
-      let parsed: { error?: string } | Patient = {};
-      try { parsed = raw ? JSON.parse(raw) : {}; } catch { /* not json */ }
-
       if (!res.ok) {
-        console.error("[Create patient] Status:", res.status, "Body:", raw);
-        const msg = (parsed as { error?: string }).error ?? `Error ${res.status}: ${raw.slice(0, 200) || "respuesta vacía"}`;
-        toast.error(msg);
+        toast.error("Error al crear paciente");
         return;
       }
       toast.success("Paciente creado");
       resetCreateForm();
       setCreateOpen(false);
       router.refresh();
-    } catch (e) {
-      console.error("[Create patient] Network error:", e);
+    } catch {
       toast.error("Error de red");
     } finally {
       setIsCreating(false);
@@ -101,66 +84,48 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
     });
   }, [patients, search, sourceFilter]);
 
-  const openSheet = async (patient: Patient) => {
-    setSelectedPatient(patient);
-    setIsEditing(false);
-    setSheetOpen(true);
-    setLoadingApts(true);
-    setAppointments([]);
-    try {
-      const res = await fetch(`/api/patients/${patient.id}/appointments`);
-      if (res.ok) setAppointments(await res.json() as Appointment[]);
-    } catch { /* silently fail */ }
-    finally { setLoadingApts(false); }
-  };
-
-  const handleSave = async () => {
-    if (!selectedPatient) return;
-    setIsSaving(true);
-    try {
-      const res = await fetch(`/api/patients/${selectedPatient.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editValues),
-      });
-      if (res.ok) { setSelectedPatient(await res.json() as Patient); setIsEditing(false); }
-    } catch { /* silently fail */ }
-    finally { setIsSaving(false); }
+  const getAvatarStyle = (char: string) => {
+    const upper = char.toUpperCase();
+    if (upper === 'J') return "bg-blue-50 text-blue-600 border-blue-100 dark:bg-[#1E3A5F] dark:text-[#38BDF8] dark:border-none";
+    if (upper === 'A') return "bg-purple-50 text-purple-600 border-purple-100 dark:bg-[#3D1F5F] dark:text-purple-300 dark:border-none";
+    if (upper === 'C') return "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-[#1F3D2A] dark:text-[#6EE7B7] dark:border-none";
+    if (upper === 'S') return "bg-orange-50 text-orange-600 border-orange-100 dark:bg-[#3D2A1F] dark:text-orange-300 dark:border-none";
+    return "bg-[var(--bg-page)] text-[var(--brand-accent)] border-[var(--border-default)]";
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+    <div className="space-y-8">
+      <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Pacientes</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Directorio de pacientes de la clínica</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Directorio de Pacientes</h1>
+          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1">Base de datos centralizada de la clínica</p>
         </div>
         <Button
           size="sm"
           onClick={() => setCreateOpen(true)}
-          className="h-9 gap-2 bg-foreground text-background hover:bg-foreground/90 shrink-0"
+          className="h-10 gap-2 bg-[var(--brand-accent)] text-white hover:opacity-90 shrink-0 font-black text-[10px] uppercase tracking-widest px-6 rounded-xl shadow-lg shadow-blue-500/20"
         >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Nuevo paciente</span>
+          <Plus className="w-4 h-4 text-white" />
+          <span className="hidden sm:inline">Nuevo registro</span>
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar pacientes..."
-            className="pl-9 h-9 text-sm w-full"
+            placeholder="Buscar por nombre, teléfono o email..."
+            className="pl-11 h-12 text-sm w-full bg-[var(--bg-input)] border-[var(--border-default)] rounded-2xl shadow-sm focus:ring-[var(--brand-accent)] text-[var(--text-primary)] transition-all"
           />
         </div>
         <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="h-9 text-sm w-full sm:w-44">
-            <SelectValue placeholder="Fuente" />
+          <SelectTrigger className="h-12 text-xs font-bold w-full sm:w-44 bg-[var(--bg-input)] border-[var(--border-default)] rounded-2xl shadow-sm text-[var(--text-primary)] transition-all">
+            <SelectValue placeholder="Canal" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las fuentes</SelectItem>
+          <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)]">
+            <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="whatsapp">WhatsApp</SelectItem>
             <SelectItem value="web">Web</SelectItem>
             <SelectItem value="manual">Manual</SelectItem>
@@ -168,236 +133,109 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
         </Select>
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto w-full">
+      <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              {search.length >= 2 ? "No se encontraron pacientes" : "No hay pacientes registrados"}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] py-24 text-center shadow-sm transition-all">
+            <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest opacity-40">
+              {search.length >= 2 ? "No se encontraron resultados" : "Aún no tienes pacientes"}
             </p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-3 md:px-4 py-3 text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Paciente</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Contacto</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
-                <th className="text-left px-3 md:px-4 py-3 text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Fuente</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Registro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((patient) => {
-                const src = SOURCE_CONFIG[patient.source];
-                return (
-                  <tr
-                    key={patient.id}
-                    onClick={() => openSheet(patient)}
-                    className="border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    <td className="px-3 md:px-4 py-4 text-sm font-semibold text-foreground whitespace-nowrap">
-                      {patient.full_name}
-                      <div className="sm:hidden text-[10px] text-muted-foreground font-normal mt-0.5">
+          filtered.map((patient) => {
+            const src = SOURCE_CONFIG[patient.source];
+            return (
+              <div
+                key={patient.id}
+                onClick={() => router.push(`/patients/${patient.id}`)}
+                className="bg-[var(--bg-card)] border-b border-[var(--border-default)] dark:border-white/5 md:rounded-[24px] md:border p-6 flex items-center justify-between hover:bg-[var(--bg-card-hover)] transition-all cursor-pointer group shadow-sm"
+              >
+                <div className="flex items-center gap-6 min-w-0">
+                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-all shadow-inner", getAvatarStyle(patient.full_name.charAt(0)))}>
+                    <span className="text-base font-black uppercase">{patient.full_name.charAt(0)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black text-[var(--text-primary)] truncate leading-none">{patient.full_name}</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                      <p className={cn("text-[10px] font-bold uppercase tracking-wider transition-all text-[var(--text-secondary)] selectable", !patient.phone && "opacity-30 dark:opacity-35")}>
                         {patient.phone ?? "Sin teléfono"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground hidden sm:table-cell whitespace-nowrap">{patient.phone ?? "—"}</td>
-                    <td className="px-4 py-4 text-sm text-muted-foreground hidden md:table-cell whitespace-nowrap">{patient.email ?? "—"}</td>
-                    <td className="px-3 md:px-4 py-4">
-                      <Badge variant="outline" className={`text-[10px] border px-1.5 py-0.5 font-medium ${src.className}`}>{src.label}</Badge>
-                    </td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground hidden lg:table-cell whitespace-nowrap">
-                      {format(new Date(patient.created_at), "d MMM yyyy", { locale: es })}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </p>
+                      <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-20 hidden sm:block" />
+                      <p className={cn("text-[10px] font-bold uppercase tracking-wider hidden md:block transition-all text-[var(--text-secondary)] selectable", !patient.email && "opacity-30 dark:opacity-35")}>
+                        {patient.email ?? "Sin correo"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-right hidden lg:block">
+                    <p className="text-[9px] font-black text-[var(--text-secondary)] uppercase tracking-widest opacity-60">Registrado</p>
+                    <p className="text-[10px] font-bold text-[var(--text-primary)] mt-0.5">{format(new Date(patient.created_at), "d MMM yyyy", { locale: es })}</p>
+                  </div>
+                  <Badge variant="outline" className={cn("text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter border-none shadow-sm", src.className)}>{src.label}</Badge>
+                  <ChevronRight className="w-5 h-5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-all" />
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">{filtered.length} paciente{filtered.length !== 1 ? "s" : ""}</p>
-
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-card border-border">
-          <SheetHeader>
-            <SheetTitle className="text-base font-semibold">Detalle de paciente</SheetTitle>
-          </SheetHeader>
-
-          <AnimatePresence mode="wait">
-            {selectedPatient && (
-              <motion.div
-                key={selectedPatient.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="mt-6 space-y-5"
-              >
-                {isEditing ? (
-                  <div className="space-y-3">
-                    {(["full_name", "phone", "email"] as const).map((field) => (
-                      <div key={field} className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground capitalize">
-                          {field === "full_name" ? "Nombre" : field === "phone" ? "Teléfono" : "Email"}
-                        </Label>
-                        <Input
-                          value={editValues[field]}
-                          onChange={(e) => setEditValues((v) => ({ ...v, [field]: e.target.value }))}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                    ))}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Notas</Label>
-                      <Textarea
-                        value={editValues.notes}
-                        onChange={(e) => setEditValues((v) => ({ ...v, notes: e.target.value }))}
-                        rows={3}
-                        className="text-sm resize-none"
-                      />
-                    </div>
-                    <div className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-8 text-xs font-semibold">
-                        {isSaving ? "Guardando..." : "Guardar"}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)} className="h-8 text-xs">
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      {[
-                        { label: "Nombre",    value: selectedPatient.full_name },
-                        { label: "Teléfono",  value: selectedPatient.phone ?? "—" },
-                        { label: "Email",     value: selectedPatient.email ?? "—" },
-                      ].map(({ label, value }) => (
-                        <div key={label}>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-                          <p className="text-sm text-foreground mt-1">{value}</p>
-                        </div>
-                      ))}
-                      {selectedPatient.notes && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notas</p>
-                          <p className="text-sm text-muted-foreground mt-1">{selectedPatient.notes}</p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuente</p>
-                        <Badge variant="outline" className={`mt-1 text-xs border px-2 py-0.5 ${SOURCE_CONFIG[selectedPatient.source].className}`}>
-                          {SOURCE_CONFIG[selectedPatient.source].label}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registro</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {format(new Date(selectedPatient.created_at), "d 'de' MMMM yyyy", { locale: es })}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm" variant="outline"
-                      onClick={() => {
-                        setEditValues({
-                          full_name: selectedPatient.full_name,
-                          phone: selectedPatient.phone ?? "",
-                          email: selectedPatient.email ?? "",
-                          notes: selectedPatient.notes ?? "",
-                        });
-                        setIsEditing(true);
-                      }}
-                      className="h-8 text-xs"
-                    >
-                      Editar
-                    </Button>
-                  </>
-                )}
-
-                <div className="pt-4 border-t border-border space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Historial de citas</p>
-                  {loadingApts ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-12 w-full" />
-                      <Skeleton className="h-12 w-full" />
-                    </div>
-                  ) : appointments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Sin citas registradas</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {appointments.map((apt) => (
-                        <div key={apt.id} className="bg-muted/50 border border-border rounded-md p-3 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-foreground">
-                              {format(new Date(apt.scheduled_at), "d 'de' MMM yyyy, HH:mm", { locale: es })}
-                            </p>
-                            <AppointmentStatusBadge status={apt.status} />
-                          </div>
-                          {apt.service && <p className="text-xs text-muted-foreground">{apt.service}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </SheetContent>
-      </Sheet>
+      <div className="flex items-center justify-between px-4">
+        <p className="text-[9px] font-medium text-[var(--text-muted)] lowercase opacity-40 italic">
+          {filtered.length} registros en el directorio
+        </p>
+      </div>
 
       <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetCreateForm(); }}>
-        <DialogContent className="w-[95vw] max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Nuevo paciente</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Registrar Nuevo Paciente</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 mt-2">
+          <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Nombre completo *</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Nombre completo *</Label>
               <Input
                 value={newPatient.full_name}
                 onChange={(e) => setNewPatient((p) => ({ ...p, full_name: e.target.value }))}
                 placeholder="Ej. Ana García López"
-                className="h-9 text-sm"
+                className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Teléfono</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Teléfono</Label>
               <Input
                 value={newPatient.phone}
                 onChange={(e) => setNewPatient((p) => ({ ...p, phone: e.target.value }))}
                 placeholder="5512345678"
-                className="h-9 text-sm"
+                className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Email</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Email</Label>
               <Input
                 type="email"
                 value={newPatient.email}
                 onChange={(e) => setNewPatient((p) => ({ ...p, email: e.target.value }))}
                 placeholder="paciente@correo.com"
-                className="h-9 text-sm"
+                className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Notas</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Notas Clínicas</Label>
               <Textarea
                 value={newPatient.notes}
                 onChange={(e) => setNewPatient((p) => ({ ...p, notes: e.target.value }))}
                 rows={3}
-                placeholder="Alergias, observaciones..."
-                className="text-sm resize-none"
+                placeholder="Alergias, observaciones, historial relevante..."
+                className="text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-medium px-5 py-4 resize-none text-[var(--text-primary)] transition-all"
               />
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-3 pt-6 border-t border-[var(--border-default)] mt-4">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => { setCreateOpen(false); resetCreateForm(); }}
-                className="h-9 text-xs"
+                className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all"
               >
                 Cancelar
               </Button>
@@ -405,9 +243,9 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
                 size="sm"
                 onClick={handleCreate}
                 disabled={isCreating || !newPatient.full_name.trim()}
-                className="h-9 text-xs px-4 font-semibold bg-foreground text-background"
+                className="h-12 px-8 text-[11px] font-black uppercase tracking-widest bg-[var(--brand-accent)] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all hover:opacity-90"
               >
-                {isCreating ? "Creando..." : "Crear paciente"}
+                {isCreating ? "Registrando..." : "Crear Registro"}
               </Button>
             </div>
           </div>

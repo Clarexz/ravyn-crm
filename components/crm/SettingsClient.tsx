@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MessageSquare, Clock, UserPlus, Save, Info, Trash2, User } from "lucide-react";
+import { Plus, MessageSquare, Clock, UserPlus, Save, Info, Trash2, User, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -176,163 +176,224 @@ export function SettingsClient({ clinic: initialClinic, staff: initialStaff, cur
 
   if (!clinic) {
     return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
+      <div className="py-12 text-center text-sm text-[var(--text-secondary)]">
         No se pudo cargar la información de la clínica.
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Configuración</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Ajustes de la clínica</p>
+        <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Configuración Clínica</h1>
+        <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Personalización y gestión operativa</p>
       </div>
 
-      <Tabs defaultValue="clinic" className="space-y-6">
+      <Tabs defaultValue="clinic" className="space-y-8">
         <div className="w-full overflow-x-auto pb-1 no-scrollbar">
-          <TabsList className="inline-flex h-9 w-full sm:w-auto items-center justify-start gap-1 bg-muted p-1 min-w-max">
-            <TabsTrigger value="clinic" className="text-[10px] sm:text-xs h-7 gap-1.5 px-3"><Info className="w-3.5 h-3.5" /> Clínica</TabsTrigger>
-            <TabsTrigger value="staff"  className="text-[10px] sm:text-xs h-7 gap-1.5 px-3"><UserPlus className="w-3.5 h-3.5" /> Miembros</TabsTrigger>
-            <TabsTrigger value="whatsapp" className="text-[10px] sm:text-xs h-7 gap-1.5 px-3"><MessageSquare className="w-3.5 h-3.5" /> WhatsApp</TabsTrigger>
-            <TabsTrigger value="hours" className="text-[10px] sm:text-xs h-7 gap-1.5 px-3"><Clock className="w-3.5 h-3.5" /> Horarios</TabsTrigger>
+          <TabsList className="inline-flex h-12 w-full sm:w-auto items-center justify-start gap-2 bg-[var(--bg-card)] dark:bg-[#1E2D3D] border border-[var(--border-default)] dark:border-white/5 p-1.5 min-w-max rounded-2xl shadow-sm transition-all">
+            {[
+              { id: "clinic", label: "Clínica", icon: Info },
+              { id: "staff", label: "Equipo", icon: UserPlus },
+              { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+              { id: "hours", label: "Horarios", icon: Clock }
+            ].map((tab) => (
+              <TabsTrigger 
+                key={tab.id}
+                value={tab.id} 
+                className={cn(
+                  "rounded-xl text-[11px] font-bold h-9 gap-2 px-6 transition-all",
+                  "data-[state=active]:bg-[#0284C7] data-[state=active]:text-white",
+                  "dark:data-[state=active]:bg-[rgba(2,132,199,0.15)] dark:data-[state=active]:text-[#38BDF8] dark:data-[state=active]:border-b-2 dark:data-[state=active]:border-[#0284C7] dark:data-[state=active]:rounded-b-none",
+                  "text-[var(--text-secondary)]"
+                )}
+              >
+                <tab.icon className="w-4 h-4" /> {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
 
-        <TabsContent value="clinic" className="space-y-5 mt-0">
-          <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+        <TabsContent value="clinic" className="space-y-6 mt-0">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[32px] p-10 shadow-sm max-w-4xl relative overflow-hidden transition-all">
+            <div className="flex items-start justify-between mb-8 transition-all">
+              <div>
+                <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Información general</h2>
+                <p className="text-sm text-[var(--text-secondary)] font-medium mt-1 transition-colors">Identidad pública de tu consultorio</p>
+              </div>
+              {!isEditing && isAdmin && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setEditValues({ name: clinic.name, phone: clinic.phone ?? "", email: clinic.email ?? "" });
+                    setIsEditing(true);
+                  }} 
+                  className={cn(
+                    "h-10 text-[11px] font-bold px-6 rounded-xl transition-all shadow-sm",
+                    "border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]",
+                    "dark:border-white/15 dark:bg-[#0A1628] dark:hover:bg-white/5"
+                  )}
+                >
+                  Editar datos
+                </Button>
+              )}
+            </div>
+
             {isEditing ? (
-              <>
+              <div className="space-y-6">
                 {[
                   { key: "name",  label: "Nombre de la clínica" },
-                  { key: "phone", label: "Teléfono" },
-                  { key: "email", label: "Email" },
+                  { key: "phone", label: "Teléfono de contacto" },
+                  { key: "email", label: "Email oficial" },
                 ].map(({ key, label }) => (
-                  <div key={key} className="space-y-1.5">
-                    <Label className="text-xs font-medium">{label}</Label>
+                  <div key={key} className="space-y-2">
+                    <Label className="text-sm font-medium text-[var(--text-secondary)] transition-colors">{label}</Label>
                     <Input
                       value={editValues[key as keyof typeof editValues]}
                       onChange={(e) => setEditValues((v) => ({ ...v, [key]: e.target.value }))}
-                      className="h-9 text-sm"
+                      className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
                     />
                   </div>
                 ))}
-                {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={handleSaveClinic} disabled={isSaving} className="h-8 text-xs font-semibold bg-foreground text-background">
-                    {isSaving ? "Guardando..." : "Guardar"}
+                {saveError && <p className="text-xs text-[var(--destructive)] font-black uppercase">{saveError}</p>}
+                <div className="flex gap-3 pt-6 border-t border-[var(--border-default)] mt-4 transition-colors">
+                  <Button 
+                    size="sm" 
+                    onClick={handleSaveClinic} 
+                    disabled={isSaving} 
+                    className="h-12 px-8 text-[11px] font-black uppercase tracking-widest bg-[#0284C7] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all"
+                  >
+                    {isSaving ? "Guardando..." : "Confirmar Cambios"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setSaveError(null); }} className="h-8 text-xs">
+                  <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setSaveError(null); }} className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all">
                     Cancelar
                   </Button>
                 </div>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {[
-                    { label: "Nombre",   value: clinic.name },
-                    { label: "Plan",     value: clinic.plan },
-                    { label: "Teléfono", value: clinic.phone ?? "—" },
-                    { label: "Email",    value: clinic.email ?? "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label}>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-                      <p className="text-sm text-foreground mt-1 font-medium">{value}</p>
-                    </div>
-                  ))}
-                </div>
-                {isAdmin && (
-                  <Button
-                    size="sm" variant="outline"
-                    onClick={() => {
-                      setEditValues({ name: clinic.name, phone: clinic.phone ?? "", email: clinic.email ?? "" });
-                      setIsEditing(true);
-                    }}
-                    className="h-8 text-xs mt-2"
-                  >
-                    Editar información
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="staff" className="space-y-4 mt-0">
-          {isAdmin && (
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setIsStaffModalOpen(true)} className="h-8 text-xs gap-1.5 bg-foreground text-background">
-                <Plus className="w-3.5 h-3.5" />
-                Nuevo miembro
-              </Button>
-            </div>
-          )}
-
-          <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
-            {staffList.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">Sin miembros en el equipo</div>
-            ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Nombre</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Email</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Rol</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staffList.map((member) => (
-                    <tr
-                      key={member.id}
-                      onClick={() => { setSelectedStaff(member); setIsSheetOpen(true); setIsEditingStaff(false); }}
-                      className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">
-                        {member.full_name}
-                        {member.id === currentUserId && <span className="text-[10px] text-muted-foreground ml-2">(tú)</span>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">{member.email}</td>
-                      <td className="px-4 py-3 text-right">
-                        <Badge
-                          variant="outline"
-                          className={member.role === "admin"
-                            ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 text-[10px]"
-                            : "bg-muted text-muted-foreground border-border text-[10px]"
-                          }
-                        >
-                          {member.role === "admin" ? "Admin" : "Staff"}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 transition-all">
+                {[
+                  { label: "Nombre comercial", value: clinic.name },
+                  { label: "Nivel de plan",     value: "Basic", badge: true },
+                  { label: "Línea directa",     value: clinic.phone ?? "No registrado" },
+                  { label: "Correo de soporte", value: clinic.email ?? "No registrado" },
+                ].map(({ label, value, badge }) => (
+                  <div key={label} className="space-y-1 transition-all">
+                    <p className="text-sm font-medium text-[var(--text-secondary)] transition-colors">{label}</p>
+                    {badge ? (
+                      <div className="pt-1">
+                        <Badge className="bg-[#EFF6FF] text-[#0284C7] dark:bg-emerald-500/20 dark:text-emerald-400 border-none px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                          {value}
                         </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    ) : (
+                      <p className="text-base font-bold text-[var(--text-primary)] transition-colors">{value}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Decoration */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--bg-page)] dark:bg-white/5 rounded-bl-[100px] -mr-10 -mt-10 opacity-30 pointer-events-none transition-colors" />
+          </div>
+
+          {/* Filling Empty Space Sections */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+             {[
+               { title: "Gestión de equipo", desc: "Configura roles y permisos", icon: UserPlus, status: "Configurado" },
+               { title: "WhatsApp Business", desc: "Automatiza recordatorios", icon: MessageSquare, status: "Por configurar" },
+               { title: "Horarios operativos", desc: "Define disponibilidad semanal", icon: Clock, status: "Configurado" },
+             ].map((card) => (
+               <div key={card.title} className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 p-6 rounded-3xl opacity-60 hover:opacity-100 transition-all cursor-pointer group">
+                  <card.icon className="w-5 h-5 text-[var(--text-muted)] group-hover:text-[#0284C7] mb-4 transition-colors" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-primary)] mb-1">{card.title}</h3>
+                  <p className="text-[10px] text-[var(--text-secondary)] font-medium mb-4">{card.desc}</p>
+                  <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-tighter rounded-full border-[var(--border-default)]">{card.status}</Badge>
+               </div>
+             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="staff" className="space-y-6 mt-0">
+          {/* Staff Content remains here */}
+          <div className="flex items-center justify-between transition-all">
+            <h2 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-widest transition-colors">Gestión de equipo</h2>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setIsStaffModalOpen(true)} className="h-10 gap-2 bg-[#0284C7] text-white rounded-xl font-black text-[10px] uppercase tracking-widest px-6 shadow-lg shadow-blue-500/20 transition-all">
+                <Plus className="w-4 h-4 text-white" />
+                Añadir Miembro
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-3 transition-all">
+            {staffList.length === 0 ? (
+              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[32px] py-20 text-center shadow-sm transition-all">
+                <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest transition-colors">Sin miembros registrados</p>
+              </div>
+            ) : (
+              staffList.map((member) => (
+                <div
+                  key={member.id}
+                  onClick={() => { setSelectedStaff(member); setIsSheetOpen(true); setIsEditingStaff(false); }}
+                  className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[24px] p-6 flex items-center justify-between hover:bg-[var(--bg-card-hover)] transition-all cursor-pointer group shadow-sm"
+                >
+                  <div className="flex items-center gap-6 min-w-0 transition-all">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--bg-page)] flex items-center justify-center shrink-0 border border-[var(--border-default)] group-hover:scale-110 transition-all">
+                      <span className="text-base font-black text-[#0284C7] uppercase transition-colors">{member.full_name.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-lg font-black text-[var(--text-primary)] truncate leading-none transition-colors">
+                        {member.full_name}
+                        {member.id === currentUserId && <span className="text-[10px] text-[#0284C7] font-black ml-3 uppercase tracking-tighter transition-colors">(Tú)</span>}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-2 uppercase tracking-wider transition-colors">{member.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-8 transition-all">
+                    <Badge
+                      className={cn(
+                        "text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest border-none transition-all",
+                        member.role === "admin" ? "bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400" : "bg-[var(--bg-page)] text-[var(--text-secondary)]"
+                      )}
+                    >
+                      {member.role === "admin" ? "Admin" : "Staff"}
+                    </Badge>
+                    <ChevronRight className="w-5 h-5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-all" />
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </TabsContent>
 
-        <TabsContent value="whatsapp" className="space-y-4 mt-0">
-          <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center gap-2 text-center">
-            <MessageSquare className="w-10 h-10 text-muted-foreground/60" />
-            <p className="text-sm font-semibold text-foreground">Próximamente</p>
-            <p className="text-xs text-muted-foreground max-w-sm">
-              La integración con WhatsApp estará disponible pronto.
-            </p>
+        <TabsContent value="whatsapp" className="space-y-6 mt-0">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[40px] p-20 flex flex-col items-center justify-center gap-6 text-center shadow-sm transition-all">
+            <div className="w-20 h-20 bg-[#EFF6FF] rounded-3xl flex items-center justify-center transition-colors">
+              <MessageSquare className="w-10 h-10 text-[#0284C7]" />
+            </div>
+            <div className="space-y-2 transition-all">
+              <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">Próximamente</h3>
+              <p className="text-sm text-[var(--text-secondary)] font-semibold max-w-xs mx-auto uppercase tracking-wider leading-relaxed transition-colors">
+                Automatización de recordatorios vía WhatsApp en fase de desarrollo
+              </p>
+            </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="hours" className="space-y-4 mt-0">
-          <div className="bg-card border border-border rounded-lg p-5">
-            <div className="space-y-1 mb-6">
-              <h3 className="text-sm font-semibold text-foreground">Horarios de Atención</h3>
-              <p className="text-xs text-muted-foreground">Define los días y horas en los que la clínica está operativa. (Persistencia pendiente de implementar)</p>
+        <TabsContent value="hours" className="space-y-6 mt-0">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[32px] p-10 shadow-sm max-w-2xl mx-auto transition-all">
+            <div className="mb-10 text-center transition-all">
+              <h3 className="text-lg font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">Horarios Operativos</h3>
+              <p className="text-xs text-[var(--text-secondary)] font-bold mt-1 uppercase tracking-widest transition-colors">Disponibilidad semanal de la clínica</p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2 transition-all">
               {businessHours.map((h, i) => (
-                <div key={h.day} className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0">
-                  <div className="flex items-center gap-3 w-28">
+                <div key={h.day} className={cn("flex items-center justify-between gap-4 p-4 rounded-2xl transition-all", h.active ? "bg-[var(--bg-page)]" : "opacity-40")}>
+                  <div className="flex items-center gap-4 w-32 transition-all">
                     <input
                       type="checkbox"
                       checked={h.active}
@@ -341,45 +402,35 @@ export function SettingsClient({ clinic: initialClinic, staff: initialStaff, cur
                         newHours[i].active = e.target.checked;
                         setBusinessHours(newHours);
                       }}
-                      className="w-4 h-4 accent-foreground"
+                      className="w-5 h-5 accent-[#0284C7] cursor-pointer"
                     />
-                    <span className={cn("text-xs font-medium", !h.active && "text-muted-foreground line-through")}>
+                    <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-widest transition-colors">
                       {h.day}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 transition-all">
                     <Input
                       type="time"
                       value={h.open}
                       disabled={!h.active}
-                      onChange={(e) => {
-                        const newHours = [...businessHours];
-                        newHours[i].open = e.target.value;
-                        setBusinessHours(newHours);
-                      }}
-                      className="h-8 text-[10px] w-24"
+                      className="h-10 text-xs font-black w-24 bg-[var(--bg-input)] border-none rounded-xl text-center text-[var(--text-primary)] transition-colors"
                     />
-                    <span className="text-muted-foreground text-[10px]">a</span>
+                    <span className="text-[var(--text-muted)] font-black text-[9px] uppercase transition-colors">a</span>
                     <Input
                       type="time"
                       value={h.close}
                       disabled={!h.active}
-                      onChange={(e) => {
-                        const newHours = [...businessHours];
-                        newHours[i].close = e.target.value;
-                        setBusinessHours(newHours);
-                      }}
-                      className="h-8 text-[10px] w-24"
+                      className="h-10 text-xs font-black w-24 bg-[var(--bg-input)] border-none rounded-xl text-center text-[var(--text-primary)] transition-colors"
                     />
                   </div>
                 </div>
               ))}
             </div>
 
-            <Button size="sm" className="h-8 text-xs gap-1.5 mt-6 bg-foreground text-background">
-              <Save className="w-3.5 h-3.5" />
-              Guardar horarios
+            <Button size="sm" className="w-full h-12 text-[11px] font-black uppercase tracking-widest mt-10 bg-[#0284C7] text-white rounded-2xl shadow-xl shadow-blue-900/20 transition-all hover:opacity-90">
+              <Save className="w-4 h-4 mr-3 text-white" />
+              Guardar Configuración
             </Button>
           </div>
         </TabsContent>
@@ -387,90 +438,95 @@ export function SettingsClient({ clinic: initialClinic, staff: initialStaff, cur
 
       {/* Staff detail / edit sheet */}
       <Sheet open={isSheetOpen} onOpenChange={(o) => { setIsSheetOpen(o); if (!o) setIsEditingStaff(false); }}>
-        <SheetContent className="w-full sm:max-w-md bg-card border-border overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="text-base font-bold">Detalle del Miembro</SheetTitle>
+        <SheetContent className="w-full sm:max-w-md bg-[var(--bg-surface)] border-none shadow-2xl p-8 rounded-l-[40px] overflow-y-auto transition-colors">
+          <SheetHeader className="mb-10 transition-all">
+            <SheetTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">Perfil de Staff</SheetTitle>
           </SheetHeader>
 
           {selectedStaff && (
-            <div className="mt-8 space-y-6">
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                  <User className="w-8 h-8 text-muted-foreground" />
+            <div className="space-y-8 transition-all">
+              <div className="flex flex-col items-center text-center gap-4 bg-[var(--bg-page)] p-8 rounded-[32px] border border-[var(--border-default)] transition-all">
+                <div className="w-20 h-20 bg-[var(--bg-surface)] rounded-[24px] flex items-center justify-center shadow-sm border border-[var(--border-default)] transition-all">
+                  <User className="w-10 h-10 text-[#0284C7]" />
                 </div>
-                <div className="space-y-1">
-                  <h3 className="font-bold text-lg text-foreground">{selectedStaff.full_name}</h3>
-                  <Badge variant="outline" className="capitalize">{selectedStaff.role}</Badge>
+                <div className="space-y-2 transition-all">
+                  <h3 className="font-black text-xl text-[var(--text-primary)] tracking-tighter transition-colors">{selectedStaff.full_name}</h3>
+                  <Badge className="bg-[#EFF6FF] text-[#0284C7] border-none px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                    Nivel {selectedStaff.role}
+                  </Badge>
                 </div>
               </div>
 
-              <div className="space-y-4 border-t border-border pt-6">
+              <div className="space-y-6 transition-all">
                 {isEditingStaff ? (
                   <>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Nombre completo</Label>
+                    <div className="space-y-2 transition-all">
+                      <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Nombre Completo</Label>
                       <Input
                         value={selectedStaff.full_name}
                         onChange={(e) => setSelectedStaff({ ...selectedStaff, full_name: e.target.value })}
-                        className="h-9 text-sm"
+                        className="h-12 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Email</Label>
+                    <div className="space-y-2 transition-all">
+                      <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Email (No editable)</Label>
                       <Input
                         value={selectedStaff.email}
                         disabled
-                        className="h-9 text-sm opacity-60"
+                        className="h-12 bg-zinc-100 dark:bg-black/20 border border-[var(--border-default)] rounded-2xl font-bold px-5 opacity-60 transition-all"
                       />
-                      <p className="text-[10px] text-muted-foreground">El email no se puede cambiar desde aquí</p>
                     </div>
                     {isAdmin && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Rol</Label>
+                      <div className="space-y-2 transition-all">
+                        <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Rol Asignado</Label>
                         <Select
                           value={selectedStaff.role}
                           onValueChange={(v) => setSelectedStaff({ ...selectedStaff, role: v as "admin" | "staff" })}
                           disabled={selectedStaff.id === currentUserId}
                         >
-                          <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="staff">Staff</SelectItem>
+                          <SelectTrigger className="h-12 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold text-[var(--text-primary)] transition-all"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all">
+                            <SelectItem value="staff">Staff Operativo</SelectItem>
                             <SelectItem value="admin">Administrador</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     )}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-3 pt-6 transition-all">
                       <Button
                         size="sm"
                         onClick={handleUpdateStaff}
                         disabled={isSavingStaff}
-                        className="flex-1 h-9 text-xs bg-foreground text-background"
+                        className="flex-1 h-12 text-[11px] font-black uppercase tracking-widest bg-[#0284C7] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all"
                       >
-                        {isSavingStaff ? "Guardando..." : "Guardar cambios"}
+                        {isSavingStaff ? "Guardando..." : "Guardar Cambios"}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditingStaff(false)} className="h-9 text-xs">
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingStaff(false)} className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all">
                         Cancelar
                       </Button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Email</p>
-                        <p className="text-sm text-foreground mt-0.5 break-all">{selectedStaff.email}</p>
+                    <div className="grid grid-cols-1 gap-6 transition-all">
+                      <div className="bg-[var(--bg-page)] px-6 py-4 rounded-2xl border border-[var(--border-default)] transition-all">
+                        <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Correo Electrónico</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)] mt-1 break-all transition-colors">{selectedStaff.email}</p>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Rol</p>
-                        <p className="text-sm text-foreground mt-0.5 capitalize">{selectedStaff.role}</p>
+                      <div className="bg-[var(--bg-page)] px-6 py-4 rounded-2xl border border-[var(--border-default)] transition-all">
+                        <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Identificación</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)] mt-1 break-all transition-colors">{selectedStaff.id}</p>
                       </div>
                     </div>
 
                     {(isAdmin || selectedStaff.id === currentUserId) && (
-                      <div className="flex flex-col gap-2 pt-4">
-                        <Button size="sm" variant="outline" onClick={() => setIsEditingStaff(true)} className="h-9 text-xs gap-2">
-                          <Info className="w-3.5 h-3.5" /> Editar información
+                      <div className="flex flex-col gap-3 pt-6 transition-all">
+                        <Button 
+                          size="sm" 
+                          onClick={() => setIsEditingStaff(true)} 
+                          className="h-12 text-[11px] font-black uppercase tracking-widest bg-[#0284C7] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all hover:opacity-90"
+                        >
+                          Editar Información
                         </Button>
                         {isAdmin && selectedStaff.id !== currentUserId && (
                           <Button
@@ -478,10 +534,10 @@ export function SettingsClient({ clinic: initialClinic, staff: initialStaff, cur
                             variant="ghost"
                             onClick={handleDeleteStaff}
                             disabled={isDeletingStaff}
-                            className="h-9 text-xs gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                            className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            {isDeletingStaff ? "Eliminando..." : "Eliminar del equipo"}
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Eliminar del Equipo
                           </Button>
                         )}
                       </div>
@@ -496,54 +552,50 @@ export function SettingsClient({ clinic: initialClinic, staff: initialStaff, cur
 
       {/* New staff dialog */}
       <Dialog open={isStaffModalOpen} onOpenChange={(open) => { setIsStaffModalOpen(open); if (!open) setNewStaff(emptyNewStaff); }}>
-        <DialogContent className="w-[95vw] max-w-sm bg-card border-border p-5 rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">Agregar miembro</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
+          <DialogHeader className="mb-6 transition-all">
+            <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">Nuevo Miembro del Equipo</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Nombre completo *</Label>
+          <div className="space-y-4 transition-all">
+            <div className="space-y-2 transition-all">
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Nombre Completo</Label>
               <Input
                 value={newStaff.full_name}
                 onChange={(e) => setNewStaff((v) => ({ ...v, full_name: e.target.value }))}
-                className="h-9 text-sm"
+                className="h-12 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
+                placeholder="Nombre del doctor o staff..."
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Email *</Label>
+            <div className="space-y-2 transition-all">
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Correo Electrónico</Label>
               <Input
                 type="email"
                 value={newStaff.email}
                 onChange={(e) => setNewStaff((v) => ({ ...v, email: e.target.value }))}
-                className="h-9 text-sm"
+                className="h-12 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
+                placeholder="correo@clinica.com"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Contraseña temporal *</Label>
+            <div className="space-y-2 transition-all">
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Contraseña Temporal</Label>
               <Input
                 type="password"
                 value={newStaff.password}
                 onChange={(e) => setNewStaff((v) => ({ ...v, password: e.target.value }))}
+                className="h-12 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-all"
                 placeholder="Mínimo 6 caracteres"
-                className="h-9 text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">Compártela con el miembro; podrá cambiarla después.</p>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Rol</Label>
-              <Select value={newStaff.role} onValueChange={(v) => setNewStaff((p) => ({ ...p, role: v as "admin" | "staff" }))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button size="sm" onClick={handleAddStaff} disabled={isAddingStaff} className="flex-1 h-9 text-xs bg-foreground text-background">
-                {isAddingStaff ? "Agregando..." : "Agregar al equipo"}
+            <div className="flex gap-3 pt-6 border-t border-[var(--border-default)] mt-4 transition-all">
+              <Button 
+                size="sm" 
+                onClick={handleAddStaff} 
+                disabled={isAddingStaff} 
+                className="flex-1 h-12 text-[11px] font-black uppercase tracking-widest bg-[#0284C7] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all hover:opacity-90"
+              >
+                {isAddingStaff ? "Registrando..." : "Añadir al Equipo"}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setIsStaffModalOpen(false); setNewStaff(emptyNewStaff); }} className="h-9 text-xs">
+              <Button size="sm" variant="ghost" onClick={() => setIsStaffModalOpen(false)} className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all">
                 Cancelar
               </Button>
             </div>

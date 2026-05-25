@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import type { Service } from "@/types/database";
 
 const formatCost = (n: number) =>
@@ -143,139 +144,140 @@ export function ServicesClient({ services }: { services: Service[] }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
+    <div className="space-y-8 w-full">
+      <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Servicios</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Catálogo de servicios y precios de la clínica</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Catálogo de Servicios</h1>
+          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Gestión de tratamientos, costos y colores</p>
         </div>
         <Button
           size="sm"
           onClick={openCreate}
-          className="h-9 gap-2 bg-foreground text-background hover:bg-foreground/90 shrink-0"
+          className="h-10 gap-2 bg-[var(--brand-accent)] text-white hover:opacity-90 shrink-0 font-black text-[10px] uppercase tracking-widest px-6 rounded-xl shadow-lg shadow-blue-500/20"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 text-white" />
           <span className="hidden sm:inline">Nuevo servicio</span>
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar servicios..."
-          className="pl-9 h-9 text-sm"
+          placeholder="Buscar servicios por nombre o descripción..."
+          className="pl-11 h-12 text-sm w-full bg-[var(--bg-input)] border-[var(--border-default)] rounded-2xl shadow-sm focus:ring-[var(--brand-accent)] text-[var(--text-primary)] transition-all"
         />
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
+      <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              {services.length === 0 ? "Aún no has dado de alta servicios" : "No se encontraron servicios"}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] py-24 text-center shadow-sm transition-all">
+            <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest opacity-40">
+              {services.length === 0 ? "Aún no tienes servicios configurados" : "Sin resultados para tu búsqueda"}
             </p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Servicio</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Descripción</th>
-                <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Costo</th>
-                <th className="text-left px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Estado</th>
-                <th className="text-right px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider w-32">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
-                  <td className="px-4 py-3 text-sm font-semibold text-foreground whitespace-nowrap">
-                    <span className="inline-flex items-center gap-2.5">
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0 ring-1 ring-border"
-                        style={{ backgroundColor: s.color ?? DEFAULT_COLOR }}
-                        aria-hidden
-                      />
-                      {s.name}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell max-w-md truncate">
-                    {s.description || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-foreground text-right whitespace-nowrap">
-                    {formatCost(s.cost)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.active ? (
-                      <Badge variant="outline" className="text-[10px] border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                        Activo
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] border-border bg-muted text-muted-foreground">
-                        Inactivo
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => openEdit(s)}
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(s.id, s.name)}
-                        disabled={deletingId === s.id}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          filtered.map((s) => (
+            <div
+              key={s.id}
+              className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[24px] p-6 flex items-center justify-between hover:bg-[var(--bg-card-hover)] transition-all group shadow-sm"
+            >
+              <div className="flex items-center gap-6 min-w-0">
+                <div 
+                  className="w-14 h-14 rounded-full flex items-center justify-center shrink-0 border-2 border-[var(--bg-surface)] shadow-md group-hover:scale-110 transition-transform"
+                  style={{ backgroundColor: `${s.color ?? DEFAULT_COLOR}20` }}
+                >
+                  <span className="text-base font-black uppercase" style={{ color: s.color ?? DEFAULT_COLOR }}>
+                    {s.name.charAt(0)}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-black text-[var(--text-primary)] truncate transition-colors leading-none">{s.name}</p>
+                  {s.description && s.description.toLowerCase() !== s.name.toLowerCase() && (
+                    <p className="text-[10px] text-[#94A3B8] font-bold mt-2 lowercase first-letter:uppercase tracking-wider line-clamp-1 max-w-xl">
+                      {s.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-8">
+                <div className="text-right">
+                  <p className="text-[9px] font-black text-[var(--text-secondary)] uppercase tracking-widest opacity-60">Costo Base</p>
+                  <p className="text-lg font-black text-[var(--text-primary)] mt-0.5 tabular-nums transition-colors">{formatCost(s.cost)}</p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  {s.active ? (
+                    <Badge variant="outline" className="text-[10px] font-black border-none bg-[#EFF6FF] text-[#0284C7] dark:bg-[var(--state-confirmed-bg)] dark:text-[var(--state-confirmed-text)] px-3 py-1 rounded-full lowercase first-letter:uppercase tracking-tighter shadow-sm">
+                      Activo
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] font-black border-none bg-[var(--bg-page)] text-[var(--text-muted)] px-3 py-1 rounded-full lowercase first-letter:uppercase tracking-tighter">
+                      Inactivo
+                    </Badge>
+                  )}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => openEdit(s)}
+                      className="h-8 w-8 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] rounded-lg"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDelete(s.id, s.name)}
+                      disabled={deletingId === s.id}
+                      className="h-8 w-8 text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">{filtered.length} servicio{filtered.length !== 1 ? "s" : ""}</p>
+      <div className="px-4">
+        <p className="text-[9px] font-medium text-[var(--text-muted)] lowercase italic transition-colors">
+          {filtered.length} {filtered.length === 1 ? "servicio disponible" : "servicios disponibles"}
+        </p>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="w-[95vw] max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              {editingId ? "Editar servicio" : "Nuevo servicio"}
+        <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">
+              {editingId ? "Actualizar Servicio" : "Nuevo Tratamiento"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 mt-2">
+          <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Nombre *</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Nombre del servicio</Label>
               <Input
                 value={values.name}
                 onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
                 placeholder="Ej. Limpieza dental"
-                className="h-9 text-sm"
+                className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-bold px-5 text-[var(--text-primary)] transition-colors"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Descripción</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Descripción</Label>
               <Textarea
                 value={values.description}
                 onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
                 rows={3}
-                placeholder="Detalles, qué incluye, duración aproximada..."
-                className="text-sm resize-none"
+                placeholder="Detalles del tratamiento..."
+                className="text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-medium px-5 py-4 resize-none text-[var(--text-primary)] transition-colors"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Costo (MXN) *</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Costo (MXN)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -283,62 +285,31 @@ export function ServicesClient({ services }: { services: Service[] }) {
                 value={values.cost}
                 onChange={(e) => setValues((v) => ({ ...v, cost: e.target.value }))}
                 placeholder="0.00"
-                className="h-9 text-sm"
+                className="h-12 text-sm bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl font-black px-5 text-[var(--text-primary)] transition-colors"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-medium flex items-center gap-2">
-                Color
-                <span
-                  className="w-4 h-4 rounded-full ring-1 ring-border"
-                  style={{ backgroundColor: values.color }}
-                  aria-hidden
-                />
-              </Label>
-              <div className="grid grid-cols-10 gap-1.5">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Paleta de color</Label>
+              <div className="grid grid-cols-10 gap-2">
                 {COLOR_PRESETS.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setValues((v) => ({ ...v, color: c }))}
                     style={{ backgroundColor: c }}
-                    aria-label={`Color ${c}`}
-                    className={`w-6 h-6 rounded-full transition-all ${
-                      values.color.toLowerCase() === c.toLowerCase()
-                        ? "ring-2 ring-offset-2 ring-offset-card ring-foreground scale-110"
-                        : "ring-1 ring-border hover:scale-110"
-                    }`}
+                    className={cn("w-6 h-6 rounded-full transition-all ring-offset-2", values.color.toLowerCase() === c.toLowerCase() ? "ring-2 ring-[var(--sidebar-bg)] scale-125 shadow-md" : "hover:scale-110")}
                   />
                 ))}
               </div>
-              <div className="flex items-center gap-2 pt-1">
-                <Label className="text-[11px] text-muted-foreground">Personalizado:</Label>
-                <input
-                  type="color"
-                  value={values.color}
-                  onChange={(e) => setValues((v) => ({ ...v, color: e.target.value }))}
-                  className="h-7 w-12 rounded cursor-pointer border border-border bg-transparent"
-                />
-                <span className="text-[11px] font-mono text-muted-foreground">{values.color.toUpperCase()}</span>
-              </div>
             </div>
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={values.active}
-                onChange={(e) => setValues((v) => ({ ...v, active: e.target.checked }))}
-                className="w-4 h-4 rounded border-border"
-              />
-              Servicio activo (disponible para nuevas citas)
-            </label>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-3 pt-6 border-t border-[var(--border-default)] mt-4">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => { setDialogOpen(false); resetForm(); }}
-                className="h-9 text-xs"
+                className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all"
               >
                 Cancelar
               </Button>
@@ -346,9 +317,9 @@ export function ServicesClient({ services }: { services: Service[] }) {
                 size="sm"
                 onClick={handleSave}
                 disabled={isSaving || !values.name.trim()}
-                className="h-9 text-xs px-4 font-semibold bg-foreground text-background"
+                className="h-12 px-8 text-[11px] font-black uppercase tracking-widest bg-[var(--brand-accent)] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all hover:opacity-90"
               >
-                {isSaving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear servicio"}
+                {isSaving ? "Guardando..." : editingId ? "Actualizar" : "Crear Servicio"}
               </Button>
             </div>
           </div>

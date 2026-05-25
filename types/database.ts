@@ -74,3 +74,45 @@ export type AppointmentLog = {
   note?: string;
   created_at: string;
 };
+
+export type BudgetStatus = "draft" | "active" | "accepted" | "expired";
+
+export type BudgetMemberRelationship = "responsible" | "spouse" | "child" | "other";
+
+export type BudgetService = {
+  service_id: string;
+  name: string;
+  sessions: number;
+  unit_price: number;
+  is_manual_price: boolean;
+};
+
+export type BudgetMember = {
+  id: string;
+  full_name: string;
+  relationship: BudgetMemberRelationship;
+  services: BudgetService[];
+};
+
+export type Budget = {
+  id: string;
+  clinic_id: string;
+  budget_number: string;
+  responsible_id: string;
+  responsible_name: string;
+  responsible_phone?: string;
+  responsible_email?: string;
+  status: BudgetStatus;
+  subtotal: number;
+  discount_value: number;
+  discount_type: "percentage" | "fixed";
+  total: number;
+  validity_days: number;
+  payment_method?: string;
+  doctor_notes?: string;
+  patient_notes?: string;
+  members: BudgetMember[];
+  created_at: string;
+  expires_at: string;
+  updated_at: string;
+};

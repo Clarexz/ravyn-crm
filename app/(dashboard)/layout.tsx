@@ -9,7 +9,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let clinicName = "Clínica";
   let userName = "Usuario";
-  let userEmail = ctx?.user.email ?? "";
   let clinicId = "";
 
   if (ctx) {
@@ -24,22 +23,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
     if (clinic) {
       clinicName = clinic.name;
-      userEmail = clinic.email ?? userEmail;
     }
   }
 
   return (
     <NewAppointmentProvider>
-      <div className="flex h-screen h-[100dvh] bg-background overflow-hidden">
+      {/* Outer Background (Unified with Sidebar for Frame effect) */}
+      <div className="min-h-screen h-[100dvh] w-full bg-[var(--sidebar-bg)] flex overflow-hidden font-sans transition-colors duration-300">
+
+        {/* Sidebar as a distinct dark block (same color as outer bg) */}
         <Sidebar
           clinicName={clinicName}
           userName={userName}
-          userEmail={userEmail}
         />
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* The Main Canvas (The "Screen" / Surface) */}
+        <div className="flex-1 bg-[var(--bg-surface)] my-4 mr-4 ml-0 rounded-[32px] flex flex-col min-w-0 overflow-hidden relative shadow-xl border border-[var(--border-default)] transition-colors duration-300">
           <Header />
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          <main className="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar scroll-smooth">
+            {children}
+          </main>
         </div>
+
       </div>
       <NewAppointmentModal clinicId={clinicId} />
     </NewAppointmentProvider>

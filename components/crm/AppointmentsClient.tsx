@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell } from "lucide-react";
+import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell, Clock, Tag, ExternalLink, X } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -12,7 +12,6 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -20,35 +19,18 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import { TimeSlotPicker } from "@/components/crm/TimeSlotPicker";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format as formatDateFn } from "date-fns";
-import type { Appointment, AppointmentStatus, Patient, Service } from "@/types/database";
-
-const DURATIONS = [
-  { value: "15", label: "15 minutos" },
-  { value: "30", label: "30 minutos" },
-  { value: "45", label: "45 minutos" },
-  { value: "60", label: "1 hora" },
-  { value: "90", label: "1.5 horas" },
-  { value: "120", label: "2 horas" },
-  { value: "150", label: "2.5 horas" },
-  { value: "180", label: "3 horas" },
-  { value: "210", label: "3.5 horas" },
-  { value: "240", label: "4 horas" },
-];
+import { cn } from "@/lib/utils";
+import type { Appointment, AppointmentStatus, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {
   patients: Pick<Patient, "full_name" | "phone"> | null;
   services?: { color: string } | null;
 };
-
-const DEFAULT_SERVICE_COLOR = "#6366f1";
 
 type ViewMode = "calendar" | "table";
 
@@ -85,7 +67,6 @@ export default function AppointmentsClient({
 
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [page, setPage]                 = useState(1);
   const [selectedApt, setSelectedApt]   = useState<AppointmentWithPatient | null>(null);
   const [sheetOpen, setSheetOpen]       = useState(false);
@@ -93,7 +74,6 @@ export default function AppointmentsClient({
 
   // Edit logic
   const [isEditing, setIsEditing] = useState(false);
-  const [services, setServices] = useState<Service[]>([]);
   const [editValues, setEditValues] = useState({
     status: "pending" as AppointmentStatus,
     date: "",
@@ -126,13 +106,6 @@ export default function AppointmentsClient({
       notes: selectedApt.notes ?? "",
     });
     setIsEditing(true);
-
-    if (services.length === 0) {
-      try {
-        const res = await fetch("/api/services?active=true");
-        if (res.ok) setServices(await res.json() as Service[]);
-      } catch { /* ignore */ }
-    }
   };
 
   const handleSaveChanges = async () => {
@@ -147,8 +120,6 @@ export default function AppointmentsClient({
       return;
     }
 
-    const selectedService = services.find((s) => s.id === editValues.service_id);
-
     setIsSaving(true);
     try {
       const res = await fetch(`/api/appointments/${selectedApt.id}`, {
@@ -158,9 +129,6 @@ export default function AppointmentsClient({
           status: editValues.status,
           scheduled_at: scheduledAt.toISOString(),
           duration_minutes: parseInt(editValues.duration_minutes),
-          service: selectedService?.name ?? selectedApt.service ?? null,
-          service_id: editValues.service_id || null,
-          cost_at_booking: selectedService?.cost ?? selectedApt.cost_at_booking ?? null,
           notes: editValues.notes,
         }),
       });
@@ -187,27 +155,35 @@ export default function AppointmentsClient({
       const name       = apt.patients?.full_name?.toLowerCase() ?? "";
       const matchSearch = search.length < 2 || name.includes(search.toLowerCase());
       const matchStatus = statusFilter === "all" || apt.status === statusFilter;
-      const matchSource = sourceFilter === "all" || apt.source === sourceFilter;
-      return matchSearch && matchStatus && matchSource;
+      return matchSearch && matchStatus;
     });
-  }, [appointments, search, statusFilter, sourceFilter]);
+  }, [appointments, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const calendarEvents = appointments.map((apt) => {
-    const serviceColor = apt.services?.color ?? DEFAULT_SERVICE_COLOR;
     const isInactive = apt.status === "cancelled" || apt.status === "no_show";
-    const color = isInactive ? "#6b7280" : serviceColor;
+    
+    const statusMap: Record<AppointmentStatus, string> = {
+      pending:   "pending",
+      confirmed: "confirmed",
+      cancelled: "cancelled",
+      completed: "completed",
+      no_show:   "cancelled",
+    };
+    
+    const tokenPart = statusMap[apt.status];
+
     return {
       id:              apt.id,
       title:           apt.patients?.full_name ?? "Sin nombre",
       start:           apt.scheduled_at,
       end:             new Date(new Date(apt.scheduled_at).getTime() + apt.duration_minutes * 60000).toISOString(),
-      backgroundColor: color,
-      borderColor:     color,
-      textColor:       "#fff",
-      classNames:      apt.status === "cancelled" ? ["opacity-60", "line-through"] : [],
+      backgroundColor: `var(--state-${tokenPart}-bg)`,
+      borderColor:     `var(--state-${tokenPart}-text)`,
+      textColor:       `var(--state-${tokenPart}-text)`,
+      classNames:      ["border-l-4", "px-3", isInactive ? "opacity-50 line-through grayscale" : "shadow-sm"],
     };
   });
 
@@ -220,19 +196,19 @@ export default function AppointmentsClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Citas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gestión de agenda y seguimiento</p>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Agenda de Citas</h1>
+          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Control de horarios y disponibilidad</p>
         </div>
 
-        <div className="flex bg-muted p-1 rounded-lg w-fit self-end sm:self-auto">
+        <div className="flex bg-[var(--bg-card)] p-1.5 rounded-2xl w-fit self-end sm:self-auto border border-[var(--border-default)] shadow-sm transition-all">
           <Button
             variant={viewMode === "calendar" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("calendar")}
-            className="h-8 text-xs gap-1.5"
+            className={cn("h-9 text-[10px] font-black uppercase tracking-widest gap-2 rounded-xl px-4 transition-all", viewMode === "calendar" ? "bg-[var(--sidebar-bg)] text-white shadow-lg" : "text-[var(--text-secondary)]")}
           >
             <Calendar className="w-3.5 h-3.5" />
             Calendario
@@ -241,7 +217,7 @@ export default function AppointmentsClient({
             variant={viewMode === "table" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("table")}
-            className="h-8 text-xs gap-1.5"
+            className={cn("h-9 text-[10px] font-black uppercase tracking-widest gap-2 rounded-xl px-4 transition-all", viewMode === "table" ? "bg-[var(--sidebar-bg)] text-white shadow-lg" : "text-[var(--text-secondary)]")}
           >
             <List className="w-3.5 h-3.5" />
             Lista
@@ -250,108 +226,135 @@ export default function AppointmentsClient({
       </div>
 
       {viewMode === "table" ? (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none z-10" />
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Buscar por paciente..."
-                className="pl-9 h-9 text-sm w-full"
+                className="pl-11 h-12 text-sm w-full bg-[var(--bg-card)] border-[var(--border-default)] rounded-2xl shadow-sm focus:ring-[var(--brand-accent)] text-[var(--text-primary)] transition-colors"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-9 text-sm w-full sm:w-44 shrink-0">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
-              <SelectTrigger className="h-9 text-sm w-full sm:w-44 shrink-0">
-                <SelectValue placeholder="Fuente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las fuentes</SelectItem>
-                {(Object.entries(SOURCE_LABELS) as [string, string][]).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-3">
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                <SelectTrigger className="h-12 text-xs font-bold w-40 shrink-0 bg-[var(--bg-card)] border-[var(--border-default)] rounded-2xl shadow-sm text-[var(--text-primary)] transition-colors">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)]">
+                  <SelectItem value="all">Todos</SelectItem>
+                  {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="bg-card border border-border rounded-lg overflow-hidden overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3">Paciente</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3">Fecha / Hora</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden md:table-cell">Servicio</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3">Estado</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3 hidden sm:table-cell">Fuente</TableHead>
-                  <TableHead className="text-xs font-medium text-muted-foreground uppercase px-4 py-3 text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginated.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-12">
-                      No se encontraron citas con los filtros aplicados.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginated.map((apt) => (
-                    <TableRow key={apt.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => openAptDetails(apt)}>
-                      <TableCell className="text-sm font-medium text-foreground whitespace-nowrap px-4 py-3">
-                        {apt.patients?.full_name ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap px-4 py-3">
-                        <span className="hidden sm:inline">{format(new Date(apt.scheduled_at), "d 'de' MMM, HH:mm", { locale: es })}</span>
-                        <span className="sm:hidden">{format(new Date(apt.scheduled_at), "d/MM, HH:mm", { locale: es })}</span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground hidden md:table-cell px-4 py-3">{apt.service ?? "—"}</TableCell>
-                      <TableCell className="px-4 py-3"><AppointmentStatusBadge status={apt.status} /></TableCell>
-                      <TableCell className="text-[10px] text-muted-foreground hidden sm:table-cell px-4 py-3">{SOURCE_LABELS[apt.source] ?? apt.source}</TableCell>
-                      <TableCell className="text-right px-4 py-3">
-                        <Button variant="ghost" size="sm" className="h-7 text-xs px-2 md:px-3">
-                          <span className="hidden xs:inline">Ver detalle</span>
-                          <span className="xs:hidden">Ver</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <div className="space-y-3">
+            {paginated.length === 0 ? (
+              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] py-20 text-center shadow-sm transition-colors">
+                <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest">Sin registros encontrados</p>
+              </div>
+            ) : (
+              paginated.map((apt) => (
+                <div 
+                  key={apt.id} 
+                  onClick={() => openAptDetails(apt)}
+                  className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[24px] p-5 flex items-center justify-between hover:bg-[var(--bg-card-hover)] transition-all cursor-pointer group shadow-sm"
+                >
+                  <div className="flex items-center gap-6 min-w-0">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--bg-page)] flex items-center justify-center shrink-0 border border-[var(--border-default)] group-hover:scale-110 transition-transform">
+                      <span className="text-sm font-black text-[var(--text-primary)] uppercase">{apt.patients?.full_name?.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-black text-[var(--text-primary)] truncate leading-none transition-colors">{apt.patients?.full_name ?? "—"}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-2 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                        {format(new Date(apt.scheduled_at), "d 'de' MMM, HH:mm", { locale: es })}
+                        <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-30" />
+                        {apt.service ?? "Sin servicio"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <AppointmentStatusBadge status={apt.status} />
+                    <ChevronRight className="w-5 h-5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-all" />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xs text-muted-foreground">Página {page} de {totalPages}</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)} className="h-8 w-8 p-0">
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="h-8 w-8 p-0">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
+            <div className="flex items-center justify-center gap-6 mt-10">
+              <Button variant="outline" size="icon" disabled={page === 1} onClick={() => setPage(page - 1)} className="h-12 w-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] shadow-sm hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)]">
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <span className="text-xs font-black text-[var(--text-secondary)] uppercase tracking-widest">Pág {page} de {totalPages}</span>
+              <Button variant="outline" size="icon" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="h-12 w-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-default)] shadow-sm hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)]">
+                <ChevronRight className="w-5 h-5" />
+              </Button>
             </div>
           )}
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] overflow-hidden p-8 shadow-sm transition-colors">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
             headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }}
             events={calendarEvents}
             eventClick={handleEventClick}
+            dayMaxEvents={3}
+            slotEventOverlap={false}
+            slotLabelFormat={{
+              hour: "numeric",
+              minute: "2-digit",
+              omitZeroMinute: false,
+              meridiem: false,
+              hour12: false,
+            }}
+            eventTimeFormat={{
+              hour: "numeric",
+              minute: "2-digit",
+              meridiem: false,
+              hour12: false,
+            }}
+            eventContent={(eventInfo) => {
+              const isMonthView = eventInfo.view.type === "dayGridMonth";
+              
+              if (isMonthView) {
+                return (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 w-full overflow-hidden">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: eventInfo.textColor }} />
+                    <b className="text-[10px] font-bold truncate text-[var(--text-primary)]">{eventInfo.event.title}</b>
+                  </div>
+                );
+              }
+
+              const duration = eventInfo.event.end && eventInfo.event.start 
+                ? (eventInfo.event.end.getTime() - eventInfo.event.start.getTime()) / 60000 
+                : 0;
+              
+              const is30Min = duration === 30;
+
+              if (is30Min) {
+                return (
+                  <div className="flex items-center w-full h-full overflow-hidden px-2 gap-2">
+                    <b className="text-[10px] font-bold truncate text-[var(--text-primary)] w-1/2 leading-none">{eventInfo.event.title}</b>
+                    <span className="text-[9px] font-semibold text-[var(--text-secondary)] opacity-80 truncate w-1/2 text-right">{eventInfo.timeText}</span>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex flex-col overflow-hidden leading-tight p-2 h-full justify-start gap-1">
+                  <b className="text-[11px] font-bold truncate text-[var(--text-primary)] leading-none">{eventInfo.event.title}</b>
+                  <span className="text-[9px] font-semibold text-[var(--text-secondary)] opacity-80 truncate">{eventInfo.timeText}</span>
+                </div>
+              );
+            }}
             locale="es"
             height="auto"
             slotMinTime="07:00:00"
@@ -364,41 +367,42 @@ export default function AppointmentsClient({
 
       {/* Detail Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-card border-border">
-          <SheetHeader>
-            <SheetTitle className="text-base font-semibold">Detalle de cita</SheetTitle>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-[var(--bg-surface)] border-none shadow-2xl p-8 rounded-l-[40px] transition-colors">
+          <SheetHeader className="mb-10 flex flex-row items-center justify-between">
+            <SheetTitle className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tighter">Expediente de Cita</SheetTitle>
           </SheetHeader>
 
           <AnimatePresence mode="wait">
             {selectedApt && (
               <motion.div
                 key={selectedApt.id + (isEditing ? "-edit" : "-view")}
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2 }}
-                className="mt-6 space-y-5"
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8"
               >
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Paciente</p>
-                  <p className="text-sm font-semibold text-foreground">{selectedApt.patients?.full_name ?? "Sin nombre"}</p>
+                <div className="bg-[var(--bg-card)] p-6 rounded-3xl border border-[var(--border-default)] shadow-sm transition-colors relative overflow-hidden">
+                  <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] mb-2 relative z-10">Paciente Principal</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)] relative z-10">{selectedApt.patients?.full_name ?? "Sin nombre"}</p>
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-[var(--brand-accent)] opacity-[0.03] rounded-bl-[60px]" />
                 </div>
 
                 {isEditing ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Fecha</Label>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Fecha</Label>
                         <input
                           type="date"
                           min={todayStr}
                           value={editValues.date}
                           onChange={(e) => setEditValues((v) => ({ ...v, date: e.target.value, time: "" }))}
-                          className="w-full h-10 rounded-md bg-background border border-border text-foreground text-sm px-3 focus:outline-none focus:ring-1 focus:ring-ring"
+                          className="w-full h-12 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm px-4 focus:ring-2 focus:ring-[var(--brand-accent)] font-bold text-[var(--text-primary)] transition-colors"
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Hora</Label>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Hora</Label>
                         <TimeSlotPicker
                           date={editValues.date}
                           value={editValues.time}
@@ -408,52 +412,14 @@ export default function AppointmentsClient({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Duración</Label>
-                        <Select
-                          value={editValues.duration_minutes}
-                          onValueChange={(v) => setEditValues((vals) => ({ ...vals, duration_minutes: v }))}
-                        >
-                          <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {DURATIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-medium">Servicio</Label>
-                        <Select
-                          value={editValues.service_id}
-                          onValueChange={(v) => setEditValues((vals) => ({ ...vals, service_id: v }))}
-                        >
-                          <SelectTrigger className="h-10 text-sm">
-                            <SelectValue placeholder={services.length === 0 ? "Sin servicios" : "Seleccionar..."} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {services.map((s) => (
-                              <SelectItem key={s.id} value={s.id} textValue={s.name}>
-                                <span className="flex items-center justify-between gap-3 w-full min-w-0">
-                                  <span className="truncate">{s.name}</span>
-                                  <span className="text-muted-foreground text-xs shrink-0">
-                                    {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(s.cost)}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Estado</Label>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Estado de Cita</Label>
                       <Select
                         value={editValues.status}
                         onValueChange={(v) => setEditValues((vals) => ({ ...vals, status: v as AppointmentStatus }))}
                       >
-                        <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
+                        <SelectTrigger className="h-12 text-sm font-bold bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl text-[var(--text-primary)] transition-colors"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-2xl border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)]">
                           {(Object.entries(STATUS_LABELS) as [AppointmentStatus, string][]).map(([value, label]) => (
                             <SelectItem key={value} value={value}>{label}</SelectItem>
                           ))}
@@ -461,75 +427,79 @@ export default function AppointmentsClient({
                       </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">Notas</Label>
-                      <Textarea
-                        value={editValues.notes}
-                        onChange={(e) => setEditValues((vals) => ({ ...vals, notes: e.target.value }))}
-                        rows={3}
-                        className="text-sm resize-none"
-                      />
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-3 pt-6 border-t border-[var(--border-default)]">
                       <Button
                         onClick={handleSaveChanges}
                         disabled={isSaving}
-                        className="flex-1 h-10 text-xs font-bold bg-foreground text-background"
+                        className="flex-1 h-12 text-[11px] font-black uppercase tracking-widest bg-[var(--brand-accent)] text-white rounded-2xl shadow-lg shadow-blue-500/20"
                       >
-                        {isSaving ? "Guardando..." : "Guardar cambios"}
+                        {isSaving ? "Guardando..." : "Confirmar Cambios"}
                       </Button>
-                      <Button variant="ghost" onClick={() => setIsEditing(false)} className="h-10 text-xs">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsEditing(false)} 
+                        className="h-12 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] border-[var(--border-default)] bg-[var(--bg-page)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 hover:border-[var(--destructive)] rounded-2xl transition-all"
+                      >
                         Cancelar
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha y hora</p>
-                      <p className="text-sm text-foreground">
-                        {format(new Date(selectedApt.scheduled_at), "EEEE, d 'de' MMMM yyyy · HH:mm", { locale: es })}
-                        <span className="text-muted-foreground"> · {selectedApt.duration_minutes} min</span>
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Servicio</p>
-                      <p className="text-sm text-foreground">{selectedApt.service ?? "—"}</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</p>
-                      <AppointmentStatusBadge status={selectedApt.status} />
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuente</p>
-                      <p className="text-sm text-foreground capitalize">{SOURCE_LABELS[selectedApt.source] ?? selectedApt.source}</p>
-                    </div>
-
-                    {selectedApt.notes && (
-                      <div className="pt-4 border-t border-border">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Notas</p>
-                        <p className="text-sm text-foreground mt-1 leading-relaxed">{selectedApt.notes}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-[var(--bg-card)] p-5 rounded-[24px] border border-[var(--border-default)] flex flex-col gap-2 shadow-sm transition-colors">
+                        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                          <Clock className="w-3.5 h-3.5 opacity-50" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Horario</p>
+                        </div>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">
+                          {format(new Date(selectedApt.scheduled_at), "d MMM, HH:mm", { locale: es })}
+                        </p>
                       </div>
-                    )}
+                      <div className="bg-[var(--bg-card)] p-5 rounded-[24px] border border-[var(--border-default)] flex flex-col gap-2 shadow-sm transition-colors">
+                        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                          <Clock className="w-3.5 h-3.5 opacity-50" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Duración</p>
+                        </div>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{selectedApt.duration_minutes} min</p>
+                      </div>
+                      <div className="bg-[var(--bg-card)] p-5 rounded-[24px] border border-[var(--border-default)] flex flex-col gap-2 shadow-sm transition-colors">
+                        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                          <Tag className="w-3.5 h-3.5 opacity-50" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Tratamiento</p>
+                        </div>
+                        <p className="text-sm font-bold text-[var(--brand-accent)]">{selectedApt.service ?? "Consulta General"}</p>
+                      </div>
+                      <div className="bg-[var(--bg-card)] p-5 rounded-[24px] border border-[var(--border-default)] flex flex-col gap-2 shadow-sm transition-colors">
+                        <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+                          <ExternalLink className="w-3.5 h-3.5 opacity-50" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Canal</p>
+                        </div>
+                        <p className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">{SOURCE_LABELS[selectedApt.source] ?? selectedApt.source}</p>
+                      </div>
+                    </div>
 
-                    <div className="pt-6 border-t border-border space-y-3">
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest px-1">Estatus de la cita</p>
+                      <div className="bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-default)] flex items-center justify-between shadow-sm transition-colors">
+                         <AppointmentStatusBadge status={selectedApt.status} />
+                         <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter italic">Última actualización hoy</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-8 border-t border-[var(--border-default)] space-y-4">
                       <Button
-                        variant="outline"
                         onClick={enterEditMode}
-                        className="w-full h-10 text-xs gap-2"
+                        className="w-full h-12 text-[11px] font-black uppercase tracking-widest bg-[var(--brand-accent)] text-white rounded-2xl shadow-lg shadow-blue-500/20 hover:opacity-90 transition-all"
                       >
-                        Editar cita
+                        Reagendar / Editar
                       </Button>
                       <Button
                         disabled
-                        className="w-full h-10 text-xs gap-2 bg-muted text-muted-foreground font-medium cursor-not-allowed"
+                        className="w-full h-12 text-[11px] font-black uppercase tracking-widest bg-[var(--bg-page)] text-[var(--text-muted)] rounded-2xl border border-[var(--border-default)] transition-all"
                       >
-                        <Bell className="w-4 h-4" />
-                        Próximamente recordatorios en WhatsApp
+                        <Bell className="w-3.5 h-3.5 mr-2" />
+                        Recordatorio WhatsApp
                       </Button>
                     </div>
                   </>

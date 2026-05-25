@@ -13,6 +13,7 @@ import {
   LogOut,
   BarChart3,
   Tag,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { href: "/appointments", label: "Citas", icon: Calendar },
   { href: "/patients", label: "Pacientes", icon: Users },
   { href: "/services", label: "Servicios", icon: Tag },
+  { href: "/budgets", label: "Presupuestos", icon: Receipt },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
@@ -43,7 +45,6 @@ interface SidebarProps {
 export function Sidebar({
   clinicName = "Clínica Demo",
   userName = "Usuario Admin",
-  userEmail = "admin@clinica.com",
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -56,21 +57,21 @@ export function Sidebar({
   };
 
   const NavContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[var(--sidebar-bg)] transition-colors">
       {/* Clinic name */}
-      <div className="px-4 py-5 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-foreground rounded-sm flex items-center justify-center shrink-0">
-            <span className="text-background font-black text-xs">R</span>
+      <div className="px-6 py-12">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-[var(--accent)] rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 rotate-3">
+            <span className="text-white font-black text-sm -rotate-3">R</span>
           </div>
-          <span className="font-semibold text-foreground text-sm truncate">
+          <span className="font-black text-white text-lg tracking-tight truncate">
             {clinicName}
           </span>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-4 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -81,13 +82,13 @@ export function Sidebar({
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                "flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300",
                 isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                  ? "bg-[var(--sidebar-item-active-bg)] text-[var(--sidebar-text-active)] shadow-xl translate-x-2"
+                  : "text-[var(--sidebar-text)] hover:text-white hover:bg-white/5"
               )}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <Icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive ? "text-[var(--accent)]" : "text-[var(--sidebar-text)]")} />
               {item.label}
             </Link>
           );
@@ -95,26 +96,30 @@ export function Sidebar({
       </nav>
 
       {/* User avatar + logout */}
-      <div className="px-3 py-4 border-t border-border space-y-2">
-        <div className="flex items-center gap-3 px-1">
-          <Avatar className="w-8 h-8 shrink-0">
-            <AvatarFallback className="bg-muted text-muted-foreground text-xs font-semibold">
-              {userName.charAt(0).toUpperCase()}
+      <div className="px-6 py-8 mt-auto border-t border-white/5">
+        <div className="flex items-center gap-3 mb-6">
+          <Avatar className="w-10 h-10 shrink-0 border-2 border-white/10 ring-2 ring-emerald-500/20">
+            <AvatarFallback className="bg-white/10 text-white font-black text-xs">
+              {userName.charAt(0)}
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-black text-white truncate leading-none">
+              {userName}
+            </span>
+            <span className="text-[10px] text-white/30 truncate font-bold uppercase tracking-widest mt-1">
+              Premium Staff
+            </span>
           </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
+          className="w-full justify-start text-white/30 hover:text-red-400 hover:bg-red-500/10 text-[10px] font-black uppercase tracking-[0.2em] h-10 rounded-xl"
           onClick={handleLogout}
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9"
         >
-          <LogOut className="w-4 h-4" />
-          <span className="text-xs font-medium">Cerrar sesión</span>
+          <LogOut className="w-4 h-4 mr-2" />
+          Finalizar
         </Button>
       </div>
     </div>
@@ -126,25 +131,17 @@ export function Sidebar({
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-[8px] left-4 z-50 md:hidden text-muted-foreground hover:text-foreground hover:bg-transparent"
+        className="fixed top-[12px] left-4 z-50 md:hidden text-white hover:bg-white/10"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle sidebar"
       >
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </Button>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-50 transition-transform duration-300 ease-in-out md:hidden shadow-2xl",
+          "fixed top-0 left-0 h-full w-72 bg-[var(--sidebar-bg)] z-50 transition-transform duration-300 ease-in-out md:hidden shadow-2xl",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -152,7 +149,7 @@ export function Sidebar({
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 shrink-0 h-screen bg-card border-r border-border flex-col sticky top-0">
+      <aside className="hidden md:flex w-72 shrink-0 h-full bg-[var(--sidebar-bg)] flex-col relative z-20">
         <NavContent />
       </aside>
     </>

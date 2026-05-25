@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import type { Appointment, Patient } from "@/types/database";
 
@@ -30,39 +31,39 @@ export function KpiDetailsModal({
 }: KpiDetailsModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-2xl bg-card border-border p-4 md:p-6 rounded-lg">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-foreground">
-            {title} ({appointments.length})
+      <DialogContent className="w-[95vw] max-w-2xl bg-[var(--bg-surface)] border-none p-8 md:p-10 rounded-[40px] shadow-2xl transition-colors">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-2xl font-bold text-[var(--text-primary)] uppercase tracking-tighter transition-colors">
+            {title} <span className="text-[var(--accent)] ml-2 transition-colors">[{appointments.length}]</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+        <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 space-y-4 no-scrollbar">
           {appointments.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground text-sm">
-              No hay citas en esta categoría.
-            </p>
+            <div className="py-20 text-center bg-[var(--bg-page)] rounded-[32px] border border-[var(--border-default)] transition-colors">
+              <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest transition-colors">Sin registros encontrados</p>
+            </div>
           ) : (
             appointments.map((apt) => (
               <div
                 key={apt.id}
-                className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-between p-6 rounded-[24px] bg-[var(--bg-card)] border border-[var(--border-default)] hover:bg-[var(--bg-card-hover)] transition-all group shadow-sm"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground truncate">
+                  <div className="flex items-center gap-4">
+                    <p className="text-base font-bold text-[var(--text-primary)] truncate transition-colors">
                       {apt.patients?.full_name ?? "Paciente desconocido"}
                     </p>
                     <AppointmentStatusBadge status={apt.status} />
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+                    <p className="text-[11px] text-[var(--text-secondary)] font-bold uppercase tracking-wider transition-colors">
                       {format(new Date(apt.scheduled_at), "d 'de' MMMM, HH:mm", {
                         locale: es,
                       })}
                     </p>
                     {apt.service && (
-                      <p className="text-xs text-primary font-medium">
+                      <p className="text-[11px] text-[var(--accent)] font-black uppercase tracking-widest transition-colors">
                         {apt.service}
                       </p>
                     )}
@@ -71,6 +72,16 @@ export function KpiDetailsModal({
               </div>
             ))
           )}
+        </div>
+
+        <div className="mt-8 flex justify-end pt-6 border-t border-[var(--border-default)] transition-colors">
+          <Button 
+            variant="ghost" 
+            onClick={onClose} 
+            className="h-12 px-10 text-[11px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 rounded-2xl transition-all"
+          >
+            Cerrar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
