@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
@@ -8,13 +8,8 @@ import {
   Plus, 
   Trash2, 
   Users, 
-  Check, 
-  UserPlus, 
-  Receipt,
   Download,
   Save,
-  Pencil,
-  ChevronDown,
   Search,
   Loader2,
   FileText
@@ -37,6 +32,10 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Patient, Service, BudgetMember, BudgetMemberRelationship, BudgetService } from "@/types/database";
 
+// PDF Libraries
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 interface NewBudgetFlowProps {
   clinicId: string;
 }
@@ -51,6 +50,8 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/services?active=true")
@@ -69,15 +70,15 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
   }>({ full_name: "", phone: "", email: "", is_new: false });
   
   const [patientQuery, setPatientQuery] = useState("");
-  const [patientResults, setPatientResults] = useState<Patient[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [patientResults, setPatientResults]   = useState<Patient[]>([]);
+  const [isSearching, setIsSearching]         = useState(false);
+  const [showResults, setShowResults]         = useState(false);
 
   useEffect(() => {
     if (patientQuery.length < 2) { setPatientResults([]); return; }
     setIsSearching(true);
     const t = setTimeout(() => {
-      fetch(`/api/patients?q=${encodeURIComponent(patientQuery)}`)
+      fetch(`/api/patients?q=${encodeURIComponent(patientQuery)}&clinic_id=${clinicId}`)
         .then(res => res.json())
         .then(data => {
           setPatientResults(Array.isArray(data) ? data : []);
@@ -86,7 +87,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
         .finally(() => setIsSearching(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [patientQuery]);
+  }, [patientQuery, clinicId]);
 
   const selectPatient = (p: Patient) => {
     setResponsible({
@@ -192,9 +193,83 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
     });
   };
 
-  const handleSaveDraft = () => {
-    toast.success("Borrador guardado correctamente");
-    router.push("/budgets");
+  const handleSaveBudget = async (status: "draft" | "active" = "active") => {
+    if (!responsible.full_name) {
+      toast.error("Debes asignar un responsable");
+      setStep(1);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/budgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          responsible_id: responsible.id,
+          responsible_name: responsible.full_name,
+          responsible_phone: responsible.phone,
+          responsible_email: responsible.email,
+          status,
+          subtotal,
+          discount_value: discountValue,
+          discount_type: discountType,
+          total,
+          validity_days: validityDays,
+          payment_method: paymentMethod,
+          doctor_notes: doctorNotes,
+          patient_notes: patientNotes,
+          members
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al guardar");
+      }
+
+      toast.success(status === 'draft' ? "Borrador guardado" : "Presupuesto creado correctamente");
+      router.push("/budgets");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const generatePDF = async () => {
+    if (!pdfRef.current) return;
+    
+    toast.loading("Generando documento...", { id: "pdf-gen" });
+    
+    try {
+      const element = pdfRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`Presupuesto-${responsible.full_name.split(' ').join('')}-${format(new Date(), "yyyyMMdd")}.pdf`);
+      
+      toast.success("PDF generado con éxito", { id: "pdf-gen" });
+    } catch (err) {
+      console.error("PDF Error:", err);
+      toast.error("Error al generar PDF", { id: "pdf-gen" });
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -362,11 +437,11 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
           <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
              {/* Left: Members */}
              <div className="lg:col-span-6 space-y-6">
-                {members.map((member, mIdx) => (
+                {members.map((member) => (
                   <div key={member.id} className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[32px] overflow-hidden shadow-sm transition-all">
                      <div className="p-6 border-b border-[var(--border-default)] dark:border-white/5 flex items-center justify-between bg-[var(--bg-page)]/30">
                         <div className="flex items-center gap-4 flex-1">
-                           <div className="w-10 h-10 rounded-xl bg-[#0284C7] bg-opacity-10 text-[#0284C7] flex items-center justify-center font-black transition-colors">
+                           <div className="w-10 h-10 rounded-xl bg-[var(--brand-accent)] bg-opacity-10 text-[var(--brand-accent)] flex items-center justify-center font-black transition-colors">
                               {member.full_name ? member.full_name.charAt(0).toUpperCase() : '?'}
                            </div>
                            <div className="flex flex-col gap-1.5 flex-1 max-w-xs">
@@ -559,7 +634,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
         {step === 3 && (
           <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
              {/* A4 Preview Card - Always White for realistic PDF preview */}
-             <div className="bg-white border border-slate-200 shadow-2xl rounded-sm aspect-[1/1.41] p-16 text-slate-800 flex flex-col space-y-8 select-text selectable transition-all overflow-hidden relative">
+             <div ref={pdfRef} className="bg-white border border-slate-200 shadow-2xl rounded-sm aspect-[1/1.41] p-16 text-slate-800 flex flex-col space-y-8 select-text selectable transition-all overflow-hidden relative">
                 {/* PDF Header */}
                 <div className="flex justify-between items-start">
                    <div className="space-y-3">
@@ -600,7 +675,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
                      <div key={m.id} className="space-y-3">
                         <div className="flex items-center gap-3 border-b border-slate-100 pb-2">
                            <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{m.full_name}</span>
-                           <span className="text-[9px] font-bold text-slate-400 uppercase px-2 py-0.5 border border-slate-200 rounded-full">{m.relationship}</span>
+                           <Badge variant="outline" className="text-[9px] font-bold text-slate-400 uppercase px-2 py-0.5 border border-slate-200 rounded-full">{m.relationship}</Badge>
                         </div>
                         <table className="w-full">
                            <thead>
@@ -623,7 +698,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
                            </tbody>
                         </table>
                         <div className="flex justify-end pt-2 border-t border-slate-50">
-                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                               Subtotal {m.full_name.split(' ')[0]}: <span className="text-slate-900 ml-2">
                                  {formatCurrency(m.services.reduce((sum, s) => sum + (s.unit_price * s.sessions), 0))}
                               </span>
@@ -723,29 +798,28 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
                  </div>
                  <div>
                     <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Vista Previa</p>
-                    <p className="text-sm font-black text-[var(--text-primary)] uppercase">Presupuesto #0024</p>
+                    <p className="text-sm font-black text-[var(--text-primary)] uppercase">Presupuesto en borrador</p>
                  </div>
               </div>
               <div className="flex items-center gap-4">
                 <Button 
-                  onClick={handleSaveDraft}
+                  onClick={() => handleSaveBudget('draft')}
+                  disabled={isSaving}
                   variant="outline"
                   className="h-11 px-8 rounded-xl border-[var(--border-default)] text-[var(--text-secondary)] font-black text-[11px] uppercase tracking-widest hover:bg-[var(--bg-page)]"
                 >
-                   <Save className="w-4 h-4 mr-2" />
+                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                    Guardar borrador
                 </Button>
                 <Button 
-                  onClick={() => {
-                    toast.success("Iniciando descarga de PDF...");
-                    setTimeout(() => {
-                       toast.success(`PDF descargado: Presupuesto-0024-${responsible.full_name.split(' ').join('')}.pdf`);
-                       router.push("/budgets");
-                    }, 1500);
+                  onClick={async () => {
+                    await handleSaveBudget('active');
+                    generatePDF();
                   }}
+                  disabled={isSaving}
                   className="h-11 px-10 bg-[#0284C7] text-white hover:bg-[#0369A1] rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-blue-500/20"
                 >
-                   <Download className="w-4 h-4 mr-2" />
+                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
                    Generar PDF Final
                 </Button>
               </div>

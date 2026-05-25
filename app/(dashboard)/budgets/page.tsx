@@ -1,14 +1,26 @@
 import { BudgetsClient } from "@/components/crm/BudgetsClient";
 import { getClinicContext } from "@/lib/supabase/auth";
+import type { Budget } from "@/types/database";
 
 export default async function BudgetsPage() {
-  const { clinicId } = await getClinicContext();
-  
-  // In a real app, we would fetch from Supabase here
-  // const { data: budgets } = await supabase.from('budgets').select('*').eq('clinic_id', clinicId);
-  
-  // For now, we'll pass an empty array or mock data
-  const budgets: any[] = []; 
+  const ctx = await getClinicContext();
+  if (!ctx) return <BudgetsClient budgets={[]} clinicId="" />;
 
-  return <BudgetsClient budgets={budgets} clinicId={clinicId} />;
+  const { data: budgets, error } = await ctx.db
+    .from("budgets")
+    .select(`
+      *,
+      members:budget_members(
+        *,
+        services:budget_services(*)
+      )
+    `)
+    .eq("clinic_id", ctx.clinicId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching budgets:", error);
+  }
+
+  return <BudgetsClient budgets={(budgets as Budget[]) ?? []} clinicId={ctx.clinicId} />;
 }

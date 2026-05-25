@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Plus, Receipt, ChevronRight, FileDown, Trash2, Eye, Users } from "lucide-react";
+import { Search, Plus, Receipt, FileDown, Trash2, Eye, Users, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useRouter } from "next/navigation";
@@ -24,10 +24,11 @@ const STATUS_CONFIG: Record<BudgetStatus, { label: string; className: string }> 
   draft:    { label: "Borrador", className: "bg-[#F8FAFC] text-[#64748B] border border-slate-200 dark:bg-white/10 dark:text-white/40 dark:border-none" },
 };
 
-export function BudgetsClient({ budgets: initialBudgets, clinicId }: BudgetsClientProps) {
+export function BudgetsClient({ budgets: initialBudgets }: BudgetsClientProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return budgets.filter((b) => {
@@ -36,11 +37,25 @@ export function BudgetsClient({ budgets: initialBudgets, clinicId }: BudgetsClie
     });
   }, [budgets, search]);
 
-  const handleDelete = (id: string) => {
-    if (!confirm("¿Eliminar este presupuesto?")) return;
-    // Mock delete
-    setBudgets(prev => prev.filter(b => b.id !== id));
-    toast.success("Presupuesto eliminado");
+  const handleDelete = async (id: string) => {
+    if (!confirm("¿Eliminar este presupuesto permanentemente?")) return;
+    
+    setIsDeleting(id);
+    try {
+      const res = await fetch(`/api/budgets/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!res.ok) throw new Error("Error al eliminar");
+      
+      setBudgets(prev => prev.filter(b => b.id !== id));
+      toast.success("Presupuesto eliminado");
+      router.refresh();
+    } catch (err) {
+      toast.error("No se pudo eliminar el presupuesto");
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   return (
@@ -110,7 +125,7 @@ export function BudgetsClient({ budgets: initialBudgets, clinicId }: BudgetsClie
                      <div className="flex items-center gap-4 mt-2 transition-colors">
                         <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
                            <Users className="w-3.5 h-3.5 opacity-40" />
-                           <span className="text-[10px] font-bold uppercase tracking-wider">{b.members.length} {b.members.length === 1 ? 'Integrante' : 'Integrantes'}</span>
+                           <span className="text-[10px] font-bold uppercase tracking-wider">{b.members?.length || 0} {b.members?.length === 1 ? 'Integrante' : 'Integrantes'}</span>
                         </div>
                         <span className="w-1 h-1 rounded-full bg-[var(--text-muted)] opacity-20" />
                         <p className="text-[11px] font-black text-[var(--text-primary)] transition-colors">
@@ -143,9 +158,10 @@ export function BudgetsClient({ budgets: initialBudgets, clinicId }: BudgetsClie
                       variant="ghost" 
                       size="icon" 
                       className="w-8 h-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"
+                      disabled={isDeleting === b.id}
                       onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}
                     >
-                       <Trash2 className="w-4 h-4" />
+                       {isDeleting === b.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>

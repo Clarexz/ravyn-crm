@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, 
@@ -10,9 +10,8 @@ import {
   Pencil, 
   Clock, 
   Calendar, 
-  User,
   Receipt,
-  BadgeDollarSign
+  Loader2
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,8 +21,12 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Budget, BudgetStatus } from "@/types/database";
 
+// PDF Libraries
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 interface BudgetDetailsClientProps {
-  budgetId: string;
+  budget: Budget;
   clinicId: string;
 }
 
@@ -34,54 +37,71 @@ const STATUS_CONFIG: Record<BudgetStatus, { label: string; className: string }> 
   draft:    { label: "Borrador", className: "bg-[#F8FAFC] text-[#64748B] border border-slate-200 dark:bg-white/10 dark:text-white/40 dark:border-none" },
 };
 
-export function BudgetDetailsClient({ budgetId, clinicId }: BudgetDetailsClientProps) {
+export function BudgetDetailsClient({ budget: initialBudget }: BudgetDetailsClientProps) {
   const router = useRouter();
-  
-  // Mock data for display
-  const [budget, setBudget] = useState<Budget>({
-    id: budgetId,
-    clinic_id: clinicId,
-    budget_number: "#0024",
-    responsible_id: "p1",
-    responsible_name: "Jeronimo Gonzales",
-    responsible_phone: "55 1234 5678",
-    responsible_email: "jeronimo@ejemplo.com",
-    status: "active",
-    subtotal: 4500,
-    discount_value: 10,
-    discount_type: "percentage",
-    total: 4050,
-    validity_days: 30,
-    payment_method: "Contado / Transferencia",
-    doctor_notes: "Plan inicial de limpieza y blanqueamiento",
-    patient_notes: "Válido solo pagando el total en la primera sesión",
-    members: [
-      {
-        id: "m1",
-        full_name: "Jeronimo Gonzales",
-        relationship: "responsible",
-        services: [
-          { service_id: "s1", name: "Limpieza Dental", sessions: 1, unit_price: 1500, is_manual_price: false },
-          { service_id: "s2", name: "Blanqueamiento", sessions: 1, unit_price: 3000, is_manual_price: false }
-        ]
-      }
-    ],
-    created_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date().toISOString()
-  });
+  const [budget, setBudget] = useState<Budget>(initialBudget);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
-  const isExpired = new Date(budget.expires_at) < new Date() && budget.status === "active";
   const daysDiff = differenceInDays(new Date(budget.expires_at), new Date());
   
-  const handleMarkAccepted = () => {
-    setBudget({ ...budget, status: "accepted" });
-    toast.success("Presupuesto marcado como aceptado");
+  const handleMarkAccepted = async () => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`/api/budgets/${budget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "accepted" }),
+      });
+      
+      if (!res.ok) throw new Error("Error al actualizar");
+      
+      setBudget({ ...budget, status: "accepted" });
+      toast.success("Presupuesto marcado como aceptado");
+      router.refresh();
+    } catch (err) {
+      toast.error("Error al actualizar el estado");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleDuplicate = () => {
-    toast.success("Presupuesto duplicado. Redirigiendo...");
-    router.push("/budgets/new?duplicate=" + budgetId);
+    toast.success("Función de duplicar próximamente disponible");
+  };
+
+  const generatePDF = async () => {
+    if (!pdfRef.current) return;
+    
+    toast.loading("Generando documento...", { id: "pdf-gen" });
+    
+    try {
+      const element = pdfRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`Presupuesto-${budget.responsible_name.split(' ').join('')}-${format(new Date(), "yyyyMMdd")}.pdf`);
+      
+      toast.success("PDF generado con éxito", { id: "pdf-gen" });
+    } catch (err) {
+      console.error("PDF Error:", err);
+      toast.error("Error al generar PDF", { id: "pdf-gen" });
+    }
   };
 
   const status = STATUS_CONFIG[budget.status];
@@ -98,7 +118,7 @@ export function BudgetDetailsClient({ budgetId, clinicId }: BudgetDetailsClientP
           Volver a presupuestos
         </Button>
         <Button 
-          onClick={() => router.push(`/budgets/edit/${budgetId}`)}
+          onClick={() => router.push(`/budgets/edit/${budget.id}`)}
           className="bg-[var(--brand-accent)] text-white hover:opacity-90 rounded-xl px-6 transition-all shadow-lg shadow-blue-500/20"
         >
           <Pencil className="w-4 h-4 mr-2" />
@@ -166,17 +186,20 @@ export function BudgetDetailsClient({ budgetId, clinicId }: BudgetDetailsClientP
                  </div>
 
                  <div className="flex flex-col gap-3">
-                    <Button className="h-12 w-full bg-[#0284C7] text-white hover:opacity-90 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all">
+                    <Button 
+                      onClick={generatePDF}
+                      className="h-12 w-full bg-[#0284C7] text-white hover:opacity-90 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all"
+                    >
                        <Download className="w-4 h-4 mr-2" />
                        Descargar PDF
                     </Button>
                     <Button 
                       onClick={handleMarkAccepted}
-                      disabled={budget.status === 'accepted'}
+                      disabled={budget.status === 'accepted' || isUpdating}
                       variant="outline" 
                       className="h-12 w-full border-[var(--brand-accent)] text-[var(--brand-accent)] hover:bg-[var(--brand-accent)] hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all"
                     >
-                       <CheckCircle2 className="w-4 h-4 mr-2" />
+                       {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                        Marcar como aceptado
                     </Button>
                     <Button 
@@ -194,7 +217,7 @@ export function BudgetDetailsClient({ budgetId, clinicId }: BudgetDetailsClientP
 
         {/* Right: PDF Preview - Always White for realistic document preview */}
         <div className="lg:col-span-6">
-           <div className="bg-white border border-slate-200 shadow-2xl rounded-sm aspect-[1/1.41] p-12 text-slate-800 flex flex-col space-y-10 scale-[0.95] origin-top transform-gpu select-text selectable">
+           <div ref={pdfRef} className="bg-white border border-slate-200 shadow-2xl rounded-sm aspect-[1/1.41] p-12 text-slate-800 flex flex-col space-y-10 scale-[0.95] origin-top transform-gpu select-text selectable">
               <div className="flex justify-between items-start">
                  <div className="space-y-3">
                     <div className="w-12 h-12 bg-[#0284C7] rounded-xl flex items-center justify-center">
@@ -215,12 +238,12 @@ export function BudgetDetailsClient({ budgetId, clinicId }: BudgetDetailsClientP
 
               <div className="grid grid-cols-2 gap-10">
                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-300 uppercase">Responsable</p>
-                    <p className="text-sm font-black text-slate-800">{budget.responsible_name}</p>
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Responsable</p>
+                    <p className="text-sm font-black text-slate-800 capitalize">{budget.responsible_name}</p>
                  </div>
                  <div className="text-right space-y-1">
-                    <p className="text-[9px] font-black text-slate-300 uppercase">Contacto</p>
-                    <p className="text-xs font-bold text-slate-500">{budget.responsible_phone}</p>
+                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Contacto</p>
+                    <p className="text-xs font-bold text-slate-500">{budget.responsible_phone || '—'}</p>
                  </div>
               </div>
 
