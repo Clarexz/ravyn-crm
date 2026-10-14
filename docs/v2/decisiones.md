@@ -33,3 +33,10 @@ Informe completo: `docs/v2/revision-seguridad-fase0b.md`.
 - Cambio de contrato n8n: el webhook ya no cae en una organizacion arbitraria. n8n debe enviar el secreto y, de preferencia, `organization_id`.
 - Pendiente de decision del dueno, no se toco: el middleware redirige a `/login` toda peticion sin sesion, incluidos los webhooks; si n8n debe llamarlos hay que excluir `/api/webhooks/` del matcher, y eso solo es seguro con el secreto ya validado. H-02 (`handle_new_user` confia en metadatos del cliente: deshabilitar registro publico en Auth o mover a `raw_app_meta_data`) y la duda sobre RLS de `public.users`.
 - Pendiente en migracion nueva (007): H-03 (quitar escritura a `authenticated` en tablas v2 y dejar solo SELECT) y H-05 (triggers de coherencia de organizacion en bookings, activities y opportunities).
+
+## D-07 Motor de agentes (Fase 1)
+- Matriz de permisos fijada por el maestro en `lib/agents/permissions.ts`. Se agregaron `find_stale_opportunities` y `get_org_metrics` (lecturas) para seguimiento y analista; el plan no las nombraba.
+- `critical` es estatico por herramienta; la decision exacta para la Fase 2 la da `isCriticalCall(tool, input)` (update_stage a won/lost, descuento > 10%).
+- El horario laboral se interpreta en UTC (settings.business_hours no trae zona horaria). Pendiente: zona horaria por organizacion en la Fase 4.
+- El organizationId de las herramientas viene siempre de la sesion; el runtime descarta cualquier clave de organizacion que proponga el modelo.
+- Migracion 007 (H-03, H-05) escrita y sin ejecutar; el dueno debe aplicarla y correr `supabase/tests/fase0b_hardening.sql`.

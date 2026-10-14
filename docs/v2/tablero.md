@@ -30,3 +30,9 @@ Actualizado por el agente maestro. Decisiones en `decisiones.md`.
 
 ## Fase 1 (despues del cierre de la 0b)
 Motor de agentes en `lib/agents/` y `app/api/agents/`, pruebas AGT-01 a 03. Tablero detallado al iniciar.
+
+## Fase 1 - Estado
+- Integrado: contrato (`lib/agents/types.ts`, `permissions.ts`), 14 herramientas con Zod, ejecutor, orquestador, 5 especialistas, ruta `POST /api/agents/chat`.
+- Pruebas: AGT-01, AGT-02 y AGT-03 en verde (113 pruebas con LLM simulado). Compuerta: tsc, lint, test y build.
+- Pendiente fuera del repo: `ANTHROPIC_API_KEY` en Vercel; aplicar migraciones 006 y 007.
+- Siguiente: Fase 2 (interceptor de aprobacion con `isCriticalCall` de `lib/agents/tools/index.ts`, rutas approve/reject, historial de auditoria).
