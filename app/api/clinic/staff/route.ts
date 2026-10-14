@@ -8,7 +8,7 @@ export async function GET() {
   const { data: profiles, error } = await ctx.db
     .from("users")
     .select("*")
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
     user_metadata: {
       full_name: body.full_name.trim(),
       role: "staff",
-      clinic_id: ctx.clinicId,
+      clinic_id: ctx.organizationId,
+      organization_id: ctx.organizationId,
     },
   });
 

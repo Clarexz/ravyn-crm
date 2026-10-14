@@ -30,7 +30,7 @@ export async function PATCH(
     .from("users")
     .update(updates)
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .select()
     .single();
 
@@ -61,7 +61,7 @@ export async function DELETE(
     .from("users")
     .select("id")
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .single();
 
   if (!target) {

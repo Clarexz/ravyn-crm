@@ -6,9 +6,9 @@ export async function GET() {
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { data, error } = await ctx.db
-    .from("clinics")
-    .select("*")
-    .eq("id", ctx.clinicId)
+    .from("organizations")
+    .select("id, name, phone, email, subdomain, plan, created_at")
+    .eq("id", ctx.organizationId)
     .single();
 
   if (error || !data) {
@@ -37,10 +37,10 @@ export async function PATCH(request: NextRequest) {
   if (body.email !== undefined) updates.email = body.email.trim() || null;
 
   const { data, error } = await ctx.db
-    .from("clinics")
+    .from("organizations")
     .update(updates)
-    .eq("id", ctx.clinicId)
-    .select()
+    .eq("id", ctx.organizationId)
+    .select("id, name, phone, email, subdomain, plan, created_at")
     .single();
 
   if (error || !data) {

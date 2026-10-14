@@ -9,15 +9,15 @@ export default async function SettingsPage() {
   }
 
   const { data: clinic } = await ctx.db
-    .from("clinics")
-    .select("*")
-    .eq("id", ctx.clinicId)
+    .from("organizations")
+    .select("id, name, phone, email, subdomain, plan, created_at")
+    .eq("id", ctx.organizationId)
     .single();
 
   const { data: profiles } = await ctx.db
     .from("users")
     .select("*")
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .order("created_at", { ascending: true });
 
   const staff: StaffMember[] = await Promise.all(
@@ -29,7 +29,7 @@ export default async function SettingsPage() {
 
   return (
     <SettingsClient
-      clinic={(clinic as Clinic) ?? null}
+      clinic={clinic ? ({ ...clinic, phone: clinic.phone ?? undefined, email: clinic.email ?? undefined, subdomain: clinic.subdomain ?? undefined } as Clinic) : null}
       staff={staff}
       currentUserId={ctx.user.id}
       isAdmin={ctx.profile.role === "admin"}

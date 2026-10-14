@@ -13,12 +13,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (ctx) {
     userName = ctx.profile.full_name;
-    clinicId = ctx.clinicId;
+    clinicId = ctx.organizationId;
 
     const { data: clinic } = await ctx.db
-      .from("clinics")
-      .select("id, name, email")
-      .eq("id", ctx.clinicId)
+      .from("organizations")
+      .select("id, name")
+      .eq("id", ctx.organizationId)
       .single();
 
     if (clinic) {
