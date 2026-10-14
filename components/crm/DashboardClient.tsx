@@ -9,7 +9,8 @@ import { useState, useEffect } from "react";
 import { KpiDetailsModal } from "@/components/crm/KpiDetailsModal";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import type { Appointment, Patient } from "@/types/database";
+import { bookingToAppointment } from "@/lib/supabase/mappers";
+import type { Appointment, Booking, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {
   patients: Pick<Patient, "full_name" | "phone"> | null;
@@ -17,10 +18,10 @@ type AppointmentWithPatient = Appointment & {
 
 interface DashboardClientProps {
   appointments: AppointmentWithPatient[];
-  clinicId: string;
+  organizationId: string;
 }
 
-export function DashboardClient({ appointments: initialAppointments, clinicId }: DashboardClientProps) {
+export function DashboardClient({ appointments: initialAppointments, organizationId }: DashboardClientProps) {
   const [activeModal, setActiveModal] = useState<{ title: string; appointments: AppointmentWithPatient[] } | null>(null);
   const [appointments, setAppointments] = useState(initialAppointments);
 
@@ -28,7 +29,7 @@ export function DashboardClient({ appointments: initialAppointments, clinicId }:
   useEffect(() => {
     setAppointments(initialAppointments);
     
-    if (!clinicId) return;
+    if (!organizationId) return;
 
     const supabase = createClient();
     const channel = supabase
@@ -38,27 +39,33 @@ export function DashboardClient({ appointments: initialAppointments, clinicId }:
         {
           event: '*', // Escuchamos INSERT, UPDATE y DELETE
           schema: 'public',
-          table: 'appointments',
-          filter: `clinic_id=eq.${clinicId}`
+          table: 'bookings',
+          filter: `organization_id=eq.${organizationId}`
         },
         async (payload) => {
           console.log("Cambio detectado en Dashboard:", payload);
           
           if (payload.eventType === 'INSERT') {
-            const { data: patient } = await supabase
-              .from('patients')
-              .select('full_name, phone')
-              .eq('id', payload.new.patient_id)
-              .single();
+            const booking = payload.new as Booking;
+            const { data: contact } = booking.contact_id
+              ? await supabase
+                  .from('contacts')
+                  .select('full_name, phone')
+                  .eq('id', booking.contact_id)
+                  .eq('organization_id', organizationId)
+                  .single()
+              : { data: null };
 
-            const newAppt = {
-              ...payload.new,
-              patients: patient || { full_name: "Paciente Nuevo", phone: null }
-            } as AppointmentWithPatient;
+            const newAppt: AppointmentWithPatient = {
+              ...bookingToAppointment(booking),
+              patients: contact
+                ? { full_name: contact.full_name, phone: contact.phone ?? undefined }
+                : { full_name: "Paciente Nuevo", phone: undefined }
+            };
             
             setAppointments(prev => [...prev, newAppt]);
           } else if (payload.eventType === 'UPDATE') {
-            setAppointments(prev => prev.map(a => a.id === payload.new.id ? { ...a, ...payload.new } : a));
+            setAppointments(prev => prev.map(a => a.id === payload.new.id ? { ...a, ...bookingToAppointment(payload.new as Booking) } : a));
           } else if (payload.eventType === 'DELETE') {
             setAppointments(prev => prev.filter(a => a.id !== payload.old.id));
           }
@@ -69,7 +76,7 @@ export function DashboardClient({ appointments: initialAppointments, clinicId }:
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [initialAppointments, clinicId]);
+  }, [initialAppointments, organizationId]);
 
   const now = new Date();
   const todayStart = startOfDay(now);
