@@ -40,3 +40,9 @@ Informe completo: `docs/v2/revision-seguridad-fase0b.md`.
 - El horario laboral se interpreta en UTC (settings.business_hours no trae zona horaria). Pendiente: zona horaria por organizacion en la Fase 4.
 - El organizationId de las herramientas viene siempre de la sesion; el runtime descarta cualquier clave de organizacion que proponga el modelo.
 - Migracion 007 (H-03, H-05) escrita y sin ejecutar; el dueno debe aplicarla y correr `supabase/tests/fase0b_hardening.sql`.
+
+## D-08 (2026-10-14) Todo simulado y preprogramado por ahora
+- Que: por indicacion del dueno, ningun dato es real durante esta etapa, tampoco el de los modulos que ya funcionaban. Se agrega un modo demo (`lib/demo/`, `RAVYN_DATA_MODE`, activo por defecto): una base en memoria con la API de supabase-js, sembrada con datos de ejemplo, reemplaza a Supabase detras de `createAdminClient` y `getClinicContext`; el middleware no exige sesion; los agentes usan un LLM preprogramado. Las rutas, las herramientas y las pruebas siguen usando el mismo codigo.
+- Por que: el dueno no quiere depender de una base real ni de claves en esta etapa; el modo demo permite ver y probar todo el flujo (incluida la aprobacion humana) sin infraestructura y se cambia a datos reales con una variable.
+- Consecuencias: las migraciones 006 y 007, Auth, RLS, `ANTHROPIC_API_KEY`, n8n y realtime dejan de ser requisitos inmediatos (quedan documentados para el paso a datos reales). El estado vive en memoria del proceso: se reinicia al reiniciar el servidor y en despliegues serverless cada instancia tiene su copia; es aceptable para demo.
+- Descartado: mantener la app contra Supabase y simular solo los agentes.
