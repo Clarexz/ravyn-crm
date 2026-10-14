@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
+import { itemToService } from "@/lib/supabase/mappers";
+import type { Item } from "@/types/database";
 
 export async function PATCH(
   request: NextRequest,
@@ -26,7 +28,7 @@ export async function PATCH(
     if (typeof body.cost !== "number" || body.cost < 0) {
       return NextResponse.json({ error: "Costo inválido" }, { status: 400 });
     }
-    updates.cost = body.cost;
+    updates.price = body.cost;
   }
   if (body.color !== undefined) {
     if (!/^#[0-9a-fA-F]{6}$/.test(body.color)) {
@@ -37,10 +39,11 @@ export async function PATCH(
   if (body.active !== undefined) updates.active = body.active;
 
   const { data, error } = await ctx.db
-    .from("services")
+    .from("items")
     .update(updates)
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
+    .eq("type", "service")
     .select()
     .single();
 
@@ -49,7 +52,7 @@ export async function PATCH(
     return NextResponse.json({ error: error?.message ?? "No encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(itemToService(data as Item));
 }
 
 export async function DELETE(
@@ -60,10 +63,11 @@ export async function DELETE(
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { error } = await ctx.db
-    .from("services")
+    .from("items")
     .delete()
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId);
+    .eq("organization_id", ctx.organizationId)
+    .eq("type", "service");
 
   if (error) {
     console.error("[DELETE /api/services/[id]] Error:", error);
