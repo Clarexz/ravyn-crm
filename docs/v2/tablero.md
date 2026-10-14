@@ -43,5 +43,20 @@ Motor de agentes en `lib/agents/` y `app/api/agents/`, pruebas AGT-01 a 03. Tabl
 - Verificado de punta a punta contra el servidor de produccion local: 8 paginas y 7 APIs responden 200 con datos de ejemplo; chat -> accion pendiente -> aprobar -> ejecutada; segunda aprobacion = 409.
 - Compuerta: tsc, lint, 353 pruebas y build sin variables de entorno.
 
-## Fase 3 (siguiente)
-Bandeja `/agents/inbox`, centro de control `/agents/settings`, insignias humano/agente en perfiles de contacto y citas, contador de pendientes en el encabezado.
+## Fase 3 - Estado (cerrada)
+Un solo dueno por archivo; el maestro hizo toda la fase (ver D-11).
+
+| Id | Tarea | Archivos | Estado |
+|---|---|---|---|
+| 3-1 | Contrato: configuracion por agente (`settings.agents`), compatibilidad con `agent_autonomy` global | `lib/agents/settings.ts`, `governance.ts`, `orchestrator.ts`, `runtime.ts` | integrado |
+| 3-2 | API: settings (admin), pending-count, detalle con diff, actividades con autor | `app/api/agents/{settings,pending-count,actions/[id]}`, `app/api/activities`, `lib/agents/diff.ts`, `lib/activities.ts` | integrado |
+| 3-3 | Bandeja `/agents/inbox` con modal (motivo, diff, payload, modificar, rechazar con comentario) | `components/crm/agents/{InboxClient,ActionReviewDialog,usePendingActions}.tsx` | integrado |
+| 3-4 | Centro de control `/agents/settings` | `components/crm/agents/SettingsClient.tsx` | integrado |
+| 3-5 | Campana de pendientes en el encabezado (aprobar en 2 clics) | `components/crm/PendingBell.tsx`, `Header.tsx` | integrado |
+| 3-6 | Insignias de autor en perfil de contacto y citas | `AuthorBadge.tsx`, `ActivityTimeline.tsx`, `PatientProfileClient.tsx`, `AppointmentsClient.tsx` | integrado |
+| 3-7 | Chat conectado a `/api/agents/chat`; demo anterior eliminada | `components/crm/agents/ChatClient.tsx`, `app/(dashboard)/agents/*` | integrado |
+| 3-8 | Pruebas: vitest (17 nuevas) y Playwright UI-01, UI-02 y otras (12) | `tests/agents/agent-settings.test.ts`, `e2e/`, `playwright.config.ts` | integrado |
+| 3-9 | Revision de seguridad | `docs/v2/revision-seguridad-fase3.md` | integrada (riesgos abiertos R-01 a R-04) |
+
+## Fase 4 (siguiente)
+Modulos e industria dinamicos. No iniciada: se espera la confirmacion del dueno.

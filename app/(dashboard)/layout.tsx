@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/crm/Sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/crm/Header";
 import { NewAppointmentProvider } from "@/components/crm/NewAppointmentContext";
 import { NewAppointmentModal } from "@/components/crm/NewAppointmentModal";
@@ -45,6 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
       </div>
+      <Toaster position="top-right" richColors />
       <NewAppointmentModal clinicId={clinicId} clinicName={clinicName} />
     </NewAppointmentProvider>
   );

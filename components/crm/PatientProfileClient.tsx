@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import type { Patient, Appointment } from "@/types/database";
 
@@ -279,6 +280,15 @@ export function PatientProfileClient({ patient: initialPatient, appointments }: 
                 ))
               )}
             </div>
+          </div>
+
+          {/* Activity history with author badges (person vs agent) */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-default)] dark:border-white/5 rounded-[40px] p-8 md:p-10 shadow-sm transition-colors">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Historial de actividad</h2>
+              <p className="text-sm text-[var(--text-secondary)] font-medium mt-1 transition-colors">Quien hizo cada cosa: personas y agentes</p>
+            </div>
+            <ActivityTimeline contactId={patient.id} limit={30} />
           </div>
         </div>
       </div>

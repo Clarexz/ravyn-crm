@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format as formatDateFn } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ActivityTimeline } from "@/components/crm/ActivityTimeline";
 import { createClient } from "@/lib/supabase/client";
 import { bookingToAppointment } from "@/lib/supabase/mappers";
 import type { Appointment, AppointmentStatus, Booking, Patient } from "@/types/database";
@@ -530,6 +531,11 @@ export default function AppointmentsClient({
                          <AppointmentStatusBadge status={selectedApt.status} />
                          <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter italic">Última actualización hoy</span>
                       </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest px-1">Actividad de la cita</p>
+                      <ActivityTimeline bookingId={selectedApt.id} limit={10} emptyText="Sin actividad registrada para esta cita." />
                     </div>
 
                     <div className="pt-8 border-t border-[var(--border-default)] space-y-4">

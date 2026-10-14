@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNewAppointment } from "@/components/crm/NewAppointmentContext";
+import { PendingBell } from "@/components/crm/PendingBell";
 import { ThemeToggle } from "@/components/crm/ThemeToggle";
 
 export function Header() {
@@ -22,6 +23,7 @@ export function Header() {
 
       {/* Right Actions */}
       <div className="flex items-center gap-4 shrink-0">
+        <PendingBell />
         <ThemeToggle />
         {showNewAppointmentBtn && (
           <Button

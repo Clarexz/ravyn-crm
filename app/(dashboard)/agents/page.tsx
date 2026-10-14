@@ -1,5 +1,5 @@
-import { AgentsDemoClient } from "@/components/crm/AgentsDemoClient";
+import { ChatClient } from "@/components/crm/agents/ChatClient";
 
 export default function AgentsPage() {
-  return <AgentsDemoClient />;
+  return <ChatClient />;
 }
