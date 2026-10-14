@@ -14,6 +14,7 @@ import {
   BarChart3,
   Tag,
   Receipt,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { href: "/patients", label: "Pacientes", icon: Users },
   { href: "/services", label: "Servicios", icon: Tag },
   { href: "/budgets", label: "Presupuestos", icon: Receipt },
+  { href: "/agents", label: "Agentes", icon: Bot },
   { href: "/reports", label: "Reportes", icon: BarChart3 },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
