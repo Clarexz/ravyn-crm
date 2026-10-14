@@ -28,8 +28,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body: unknown = await req.json();
 
-    // TODO: Fase 3 — validar body con Zod, actualizar cita en Supabase,
-    // insertar log en appointment_logs, etc.
+    // TODO: Fase 3 — validar body con Zod, actualizar la reserva en bookings,
+    // insertar la actividad de cambio de estado en activities, etc.
     console.log("[webhook] appointment-updated received:", body);
 
     return NextResponse.json(

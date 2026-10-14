@@ -1,31 +1,44 @@
 import AppointmentsClient from "@/components/crm/AppointmentsClient";
 import { getClinicContext } from "@/lib/supabase/auth";
+import { bookingToAppointment } from "@/lib/supabase/mappers";
+import type { Booking } from "@/types/database";
+
+type BookingRow = Booking & {
+  contacts: { full_name: string; phone: string | null } | null;
+  items: { color: string } | null;
+};
 
 export default async function AppointmentsPage() {
   const ctx = await getClinicContext();
   if (!ctx) {
-    return <AppointmentsClient appointments={[]} clinicId="" userId="" clinicName="" />;
+    return <AppointmentsClient appointments={[]} organizationId="" userId="" clinicName="" />;
   }
 
-  const [{ data: appointments }, { data: clinic }] = await Promise.all([
+  const [{ data: bookings }, { data: organization }] = await Promise.all([
     ctx.db
-      .from("appointments")
-      .select("*, patients(full_name, phone), services(color)")
-      .eq("clinic_id", ctx.clinicId)
+      .from("bookings")
+      .select("*, contacts(full_name, phone), items(color)")
+      .eq("organization_id", ctx.organizationId)
       .order("scheduled_at", { ascending: true }),
     ctx.db
-      .from("clinics")
+      .from("organizations")
       .select("name")
-      .eq("id", ctx.clinicId)
+      .eq("id", ctx.organizationId)
       .single()
   ]);
 
+  const appointments = ((bookings ?? []) as BookingRow[]).map(({ contacts, items, ...booking }) => ({
+    ...bookingToAppointment(booking),
+    patients: contacts,
+    services: items,
+  }));
+
   return (
     <AppointmentsClient
-      appointments={appointments ?? []}
-      clinicId={ctx.clinicId}
+      appointments={appointments}
+      organizationId={ctx.organizationId}
       userId={ctx.user.id}
-      clinicName={clinic?.name ?? "Sucursal Centro"}
+      clinicName={organization?.name ?? "Sucursal Centro"}
     />
   );
 }

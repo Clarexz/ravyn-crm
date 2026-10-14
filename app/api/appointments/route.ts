@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
-import type { AppointmentStatus } from "@/types/database";
+import { bookingToAppointment } from "@/lib/supabase/mappers";
+import type { AppointmentStatus, Booking } from "@/types/database";
+
+const BOOKING_SELECT = "*, contacts(full_name, phone), items(color)";
+
+type BookingRow = Booking & {
+  contacts: { full_name: string; phone: string | null } | null;
+  items: { color: string } | null;
+};
+
+// Misma forma que el JSON de v1: cita + patients + services.
+function toAppointmentJson(row: BookingRow) {
+  const { contacts, items, ...booking } = row;
+  return { ...bookingToAppointment(booking), patients: contacts, services: items };
+}
 
 export async function GET(request: NextRequest) {
   const ctx = await getClinicContext();
@@ -12,9 +26,9 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get("date");
 
   let query = ctx.db
-    .from("appointments")
-    .select("*, patients(full_name, phone), services(color)")
-    .eq("clinic_id", ctx.clinicId)
+    .from("bookings")
+    .select(BOOKING_SELECT)
+    .eq("organization_id", ctx.organizationId)
     .order("scheduled_at", { ascending: true });
 
   if (date) {
@@ -35,7 +49,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  return NextResponse.json(((data ?? []) as BookingRow[]).map(toAppointmentJson));
 }
 
 export async function POST(request: NextRequest) {
@@ -61,21 +75,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "scheduled_at requerido" }, { status: 400 });
   }
 
+  // contact_id / item_id del cliente deben pertenecer a la organizacion.
+  const { data: contact } = await ctx.db
+    .from("contacts")
+    .select("id")
+    .eq("id", body.patient_id)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+  if (!contact) {
+    return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
+  }
+
+  if (body.service_id) {
+    const { data: item } = await ctx.db
+      .from("items")
+      .select("id")
+      .eq("id", body.service_id)
+      .eq("organization_id", ctx.organizationId)
+      .maybeSingle();
+    if (!item) {
+      return NextResponse.json({ error: "Servicio no encontrado" }, { status: 404 });
+    }
+  }
+
   const { data, error } = await ctx.db
-    .from("appointments")
+    .from("bookings")
     .insert({
-      clinic_id: ctx.clinicId,
-      patient_id: body.patient_id,
+      organization_id: ctx.organizationId,
+      contact_id: body.patient_id,
       scheduled_at: body.scheduled_at,
       duration_minutes: body.duration_minutes ?? 30,
       status: body.status ?? "pending",
-      service: body.service || null,
-      service_id: body.service_id || null,
+      service_snapshot: body.service || null,
+      item_id: body.service_id || null,
       cost_at_booking: typeof body.cost_at_booking === "number" ? body.cost_at_booking : null,
       notes: body.notes || null,
       source: body.source ?? "manual",
     })
-    .select("*, patients(full_name, phone), services(color)")
+    .select(BOOKING_SELECT)
     .single();
 
   if (error) {
@@ -83,5 +120,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `${error.message}${error.hint ? ` — ${error.hint}` : ""}` }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(toAppointmentJson(data as BookingRow), { status: 201 });
 }
