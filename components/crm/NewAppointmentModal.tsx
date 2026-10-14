@@ -45,7 +45,8 @@ const DURATIONS = [
 
 type PatientResult = Pick<Patient, "id" | "full_name" | "phone" | "email">;
 
-export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string; clinicName: string }) {
+// clinicId se acepta por compatibilidad con el layout, pero ya no se usa: el servidor resuelve la organizacion.
+export function NewAppointmentModal({ clinicName }: { clinicId?: string; clinicName: string }) {
   const { open, setOpen } = useNewAppointment();
   const router = useRouter();
 
@@ -101,11 +102,11 @@ export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string
     if (q.length < 1) { setPatientResults([]); setIsSearching(false); return; }
     setIsSearching(true);
     try {
-      const res = await fetch(`/api/patients?q=${encodeURIComponent(q)}&clinic_id=${clinicId}`);
+      const res = await fetch(`/api/patients?q=${encodeURIComponent(q)}`);
       if (res.ok) setPatientResults(await res.json() as PatientResult[]);
     } catch { /* ignore */ }
     finally { setIsSearching(false); }
-  }, [clinicId]);
+  }, []);
 
   useEffect(() => {
     if (patientQuery.length >= 1 && !selectedPatient) setIsSearching(true);
@@ -128,7 +129,7 @@ export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name: newPatient.full_name, phone: newPatient.phone, clinic_id: clinicId, source: "manual" }),
+        body: JSON.stringify({ full_name: newPatient.full_name, phone: newPatient.phone, source: "manual" }),
       });
       if (res.ok) {
         selectPatient(await res.json() as PatientResult);
@@ -157,7 +158,7 @@ export function NewAppointmentModal({ clinicId, clinicName }: { clinicId: string
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_id: values.patient_id,
-          clinic_id: clinicId,
+         
           scheduled_at,
           duration_minutes: parseInt(values.duration_minutes),
           service: selectedService?.name ?? null,

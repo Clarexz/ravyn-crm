@@ -26,10 +26,11 @@ import { useRouter } from "next/navigation";
 import { format as formatDateFn } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import type { Appointment, AppointmentStatus, Patient } from "@/types/database";
+import { bookingToAppointment } from "@/lib/supabase/mappers";
+import type { Appointment, AppointmentStatus, Booking, Patient } from "@/types/database";
 
 type AppointmentWithPatient = Appointment & {
-  patients: Pick<Patient, "full_name" | "phone"> | null;
+  patients: (Pick<Patient, "full_name"> & { phone?: string | null }) | null;
   services?: { color: string } | null;
 };
 
@@ -53,11 +54,11 @@ const PAGE_SIZE = 10;
 
 export default function AppointmentsClient({
   appointments: initialAppointments,
-  clinicId,
+  organizationId,
   clinicName,
 }: {
   appointments: AppointmentWithPatient[];
-  clinicId: string;
+  organizationId: string;
   userId: string;
   clinicName: string;
 }) {
@@ -68,7 +69,7 @@ export default function AppointmentsClient({
   useEffect(() => {
     _setAppointments(initialAppointments);
     
-    if (!clinicId) return;
+    if (!organizationId) return;
 
     // Configurar suscripción a cambios en tiempo real desde Supabase
     const supabase = createClient();
@@ -79,21 +80,21 @@ export default function AppointmentsClient({
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'appointments',
-          filter: `clinic_id=eq.${clinicId}`
+          table: 'bookings',
+          filter: `organization_id=eq.${organizationId}`
         },
         async (payload) => {
           console.log("Nueva cita recibida vía Realtime:", payload.new);
           // Opcional: Obtener los datos del paciente para que se muestre el nombre completo
-          // Ya que el payload de 'appointments' solo trae el patient_id
+          // Ya que el payload de 'bookings' solo trae el contact_id
           const { data: patient } = await supabase
-            .from('patients')
+            .from('contacts')
             .select('full_name, phone')
-            .eq('id', payload.new.patient_id)
+            .eq('id', payload.new.contact_id)
             .single();
 
           const newAppointment = {
-            ...payload.new,
+            ...bookingToAppointment(payload.new as Booking),
             patients: patient || { full_name: "Paciente Nuevo", phone: null },
             services: null // Asumimos color default si no se joinea
           } as AppointmentWithPatient;
@@ -107,7 +108,7 @@ export default function AppointmentsClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [initialAppointments, clinicId]);
+  }, [initialAppointments, organizationId]);
 
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bookingToAppointment } from "@/lib/supabase/mappers";
+import type { Booking } from "@/types/database";
 
 export async function POST(req: Request) {
   try {
@@ -22,56 +24,56 @@ export async function POST(req: Request) {
 
     const supabase = createAdminClient();
 
-    // 2. Buscar la sucursal por nombre para obtener el clinic_id
-    let clinicId = "";
+    // 2. Buscar la sucursal por nombre para obtener la organizacion
+    let organizationId = "";
     if (sucursal) {
-      const { data: clinic } = await supabase
-        .from("clinics")
+      const { data: org } = await supabase
+        .from("organizations")
         .select("id")
         .ilike("name", `%${sucursal}%`)
         .single();
         
-      if (clinic) clinicId = clinic.id;
+      if (org) organizationId = org.id;
     }
     
     // Si no encuentra la sucursal por nombre, toma la primera disponible (fallback)
-    if (!clinicId) {
-       const { data: firstClinic } = await supabase.from("clinics").select("id").limit(1).single();
-       if (firstClinic) clinicId = firstClinic.id;
+    if (!organizationId) {
+       const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).single();
+       if (firstOrg) organizationId = firstOrg.id;
        else return NextResponse.json({ error: "No se encontró ninguna clínica configurada" }, { status: 500 });
     }
 
     // 3. Buscar paciente existente por WhatsApp o Correo, o crearlo si no existe
-    let patientId = "";
+    let contactId = "";
     
     // Intento 1: Buscar por teléfono
     if (whatsapp) {
       const { data: pByPhone } = await supabase
-        .from("patients")
+        .from("contacts")
         .select("id")
-        .eq("clinic_id", clinicId)
+        .eq("organization_id", organizationId)
         .eq("phone", whatsapp)
         .single();
-      if (pByPhone) patientId = pByPhone.id;
+      if (pByPhone) contactId = pByPhone.id;
     }
     
     // Intento 2: Si no hay por teléfono, buscar por nombre exacto
-    if (!patientId) {
+    if (!contactId) {
       const { data: pByName } = await supabase
-        .from("patients")
+        .from("contacts")
         .select("id")
-        .eq("clinic_id", clinicId)
+        .eq("organization_id", organizationId)
         .ilike("full_name", nombre)
         .single();
-      if (pByName) patientId = pByName.id;
+      if (pByName) contactId = pByName.id;
     }
 
     // Intento 3: Si no existe, lo creamos
-    if (!patientId) {
-      const { data: newPatient, error: pError } = await supabase
-        .from("patients")
+    if (!contactId) {
+      const { data: newContact, error: pError } = await supabase
+        .from("contacts")
         .insert({
-          clinic_id: clinicId,
+          organization_id: organizationId,
           full_name: nombre,
           phone: whatsapp || null,
           email: correo || null,
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
         .single();
         
       if (pError) throw pError;
-      if (newPatient) patientId = newPatient.id;
+      if (newContact) contactId = newContact.id;
     }
 
     // 4. Calcular duración en base a inicio y fin
@@ -95,33 +97,34 @@ export async function POST(req: Request) {
     }
 
     // 5. Intentar buscar el servicio en el catálogo para asignar el ID y costo (opcional)
-    let serviceId = null;
+    let itemId = null;
     let cost = null;
     if (servicio) {
       const { data: srv } = await supabase
-        .from("services")
-        .select("id, cost")
-        .eq("clinic_id", clinicId)
+        .from("items")
+        .select("id, price")
+        .eq("type", "service")
+        .eq("organization_id", organizationId)
         .ilike("name", `%${servicio}%`)
         .single();
         
       if (srv) {
-        serviceId = srv.id;
-        cost = srv.cost;
+        itemId = srv.id;
+        cost = srv.price;
       }
     }
 
     // 6. Insertar la cita en la base de datos local
     const { data: appointment, error: aptError } = await supabase
-      .from("appointments")
+      .from("bookings")
       .insert({
-        clinic_id: clinicId,
-        patient_id: patientId,
+        organization_id: organizationId,
+        contact_id: contactId,
         scheduled_at: new Date(inicio).toISOString(),
         duration_minutes: durationMinutes,
         status: "confirmed", // Asumimos que si viene de n8n ya está confirmada
-        service: servicio || "Consulta",
-        service_id: serviceId,
+        service_snapshot: servicio || "Consulta",
+        item_id: itemId,
         cost_at_booking: cost,
         source: "whatsapp", // Identificamos que entró por automatización
         n8n_execution_id: cita_id // Guardamos la referencia de n8n
@@ -134,7 +137,7 @@ export async function POST(req: Request) {
     // Supabase automáticamente emitirá el evento INSERT por WebSockets a través de Realtime
     // No necesitamos hacer nada extra aquí para actualizar la interfaz.
 
-    return NextResponse.json({ success: true, appointment });
+    return NextResponse.json({ success: true, appointment: bookingToAppointment(appointment as Booking) });
 
   } catch (error: unknown) {
     console.error("Error procesando webhook de n8n:", error);
