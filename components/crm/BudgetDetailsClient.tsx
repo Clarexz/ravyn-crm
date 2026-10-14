@@ -27,7 +27,7 @@ import html2canvas from "html2canvas";
 
 interface BudgetDetailsClientProps {
   budget: Budget;
-  clinicId: string;
+  organizationId: string;
 }
 
 const STATUS_CONFIG: Record<BudgetStatus, { label: string; className: string }> = {

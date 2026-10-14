@@ -14,7 +14,7 @@ import type { Budget, BudgetStatus } from "@/types/database";
 
 interface BudgetsClientProps {
   budgets: Budget[];
-  clinicId: string;
+  organizationId: string;
 }
 
 const STATUS_CONFIG: Record<BudgetStatus, { label: string; className: string }> = {

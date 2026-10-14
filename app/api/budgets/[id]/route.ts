@@ -16,7 +16,7 @@ export async function PATCH(
       .from("budgets")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", params.id)
-      .eq("clinic_id", ctx.clinicId)
+      .eq("organization_id", ctx.organizationId)
       .select()
       .single();
 
@@ -44,7 +44,7 @@ export async function DELETE(
       .from("budgets")
       .delete()
       .eq("id", params.id)
-      .eq("clinic_id", ctx.clinicId);
+      .eq("organization_id", ctx.organizationId);
 
     if (error) throw error;
 

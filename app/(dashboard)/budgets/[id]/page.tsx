@@ -1,6 +1,6 @@
 import { BudgetDetailsClient } from "@/components/crm/BudgetDetailsClient";
 import { getClinicContext } from "@/lib/supabase/auth";
-import type { Budget } from "@/types/database";
+import { BUDGET_SELECT, budgetFromRow } from "@/lib/budgets/mappers";
 import { notFound } from "next/navigation";
 
 export default async function BudgetDetailsPage({ params }: { params: { id: string } }) {
@@ -9,15 +9,9 @@ export default async function BudgetDetailsPage({ params }: { params: { id: stri
 
   const { data: budget, error } = await ctx.db
     .from("budgets")
-    .select(`
-      *,
-      members:budget_members(
-        *,
-        services:budget_services(*)
-      )
-    `)
+    .select(BUDGET_SELECT)
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .single();
 
   if (error || !budget) {
@@ -25,5 +19,10 @@ export default async function BudgetDetailsPage({ params }: { params: { id: stri
     return notFound();
   }
 
-  return <BudgetDetailsClient budget={budget as Budget} clinicId={ctx.clinicId} />;
+  return (
+    <BudgetDetailsClient
+      budget={budgetFromRow(budget as unknown as Record<string, unknown>)}
+      organizationId={ctx.organizationId}
+    />
+  );
 }

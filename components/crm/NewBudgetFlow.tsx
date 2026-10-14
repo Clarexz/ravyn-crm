@@ -37,7 +37,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 interface NewBudgetFlowProps {
-  clinicId: string;
+  organizationId: string;
+  services: Service[];
 }
 
 const STEPS = [
@@ -46,19 +47,12 @@ const STEPS = [
   { id: 3, label: "Resumen y condiciones" }
 ];
 
-export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
+export function NewBudgetFlow({ services }: NewBudgetFlowProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [services, setServices] = useState<Service[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetch("/api/services?active=true")
-      .then(res => res.json())
-      .then(data => setServices(Array.isArray(data) ? data : []))
-      .catch(() => setServices([]));
-  }, []);
   
   // Data State
   const [responsible, setResponsible] = useState<{
@@ -78,7 +72,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
     if (patientQuery.length < 2) { setPatientResults([]); return; }
     setIsSearching(true);
     const t = setTimeout(() => {
-      fetch(`/api/patients?q=${encodeURIComponent(patientQuery)}&clinic_id=${clinicId}`)
+      fetch(`/api/budgets/responsibles?q=${encodeURIComponent(patientQuery)}`)
         .then(res => res.json())
         .then(data => {
           setPatientResults(Array.isArray(data) ? data : []);
@@ -87,7 +81,7 @@ export function NewBudgetFlow({ clinicId }: NewBudgetFlowProps) {
         .finally(() => setIsSearching(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [patientQuery, clinicId]);
+  }, [patientQuery]);
 
   const selectPatient = (p: Patient) => {
     setResponsible({
