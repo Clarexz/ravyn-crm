@@ -5,6 +5,10 @@ vi.mock("@/lib/agents/executor", () => ({
   listToolsForAgent: vi.fn(() => []),
 }));
 
+vi.mock("@/lib/agents/governance", () => ({
+  executeToolGoverned: vi.fn(async () => ({ ok: true, data: {} })),
+}));
+
 import { classifyByKeywords, classifyIntent, handleMessage } from "@/lib/agents/orchestrator";
 import { classificationResponse, createMockLlm, textResponse } from "./mockLlm";
 import type { SupabaseClient } from "@supabase/supabase-js";

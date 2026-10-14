@@ -320,6 +320,7 @@ export function seedData(): Tables {
         settings: { business_hours: { start: "10:00", end: "14:00", days: [1, 2, 3, 4, 5, 6] } },
       },
     ],
+    agent_actions: [],
     contacts: [
       { id: IDS.contactA1, organization_id: ORG_A, full_name: "Maria Lopez", phone: "+52 55 1111 2222", email: "maria@a.mx", company_name: null, tags: [], notes: "Cliente frecuente", source: "manual", created_at: ts("2026-09-01T10:00:00.000Z") },
       { id: IDS.contactA2, organization_id: ORG_A, full_name: "Juan 100% Perez_Jr", phone: "+52 55 3333 4444", email: "juan@a.mx", company_name: "ACME", tags: [], notes: null, source: "web", created_at: ts("2026-10-10T10:00:00.000Z") },

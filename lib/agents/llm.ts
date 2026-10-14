@@ -1,6 +1,8 @@
 // Cliente de LLM minimo. El resto del motor depende SOLO de la interfaz LlmClient;
 // la implementacion real usa @anthropic-ai/sdk y solo se instancia en el servidor.
 import Anthropic from "@anthropic-ai/sdk";
+import { DemoLlmClient } from "@/lib/agents/demoLlm";
+import { isDemoMode } from "@/lib/demo/config";
 import type { ToolSummary } from "@/lib/agents/types";
 
 // classifier: respuesta corta y barata (enrutamiento). specialist: razonamiento con herramientas.
@@ -152,8 +154,10 @@ export class AnthropicLlmClient implements LlmClient {
   }
 }
 
-// Fabrica: lee la clave solo en el servidor (nunca NEXT_PUBLIC_).
+// Fabrica: en modo demo (D-08) devuelve el LLM preprogramado; en modo live lee la clave
+// solo en el servidor (nunca NEXT_PUBLIC_).
 export function createLlmClient(env: NodeJS.ProcessEnv = process.env): LlmClient {
+  if (isDemoMode()) return new DemoLlmClient();
   const apiKey = env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) throw new LlmConfigError();
   return new AnthropicLlmClient(apiKey);

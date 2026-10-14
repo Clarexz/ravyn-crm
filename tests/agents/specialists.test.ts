@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const executeTool = vi.hoisted(() => vi.fn());
 const listToolsForAgent = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/agents/executor", () => ({ executeTool, listToolsForAgent }));
+// El runtime usa el interceptor de gobernanza; aqui se simula con el mismo mock.
+vi.mock("@/lib/agents/governance", () => ({ executeToolGoverned: executeTool }));
 
 import { MAX_ITERATIONS, runSpecialist } from "@/lib/agents/runtime";
 import { SPECIALISTS, SPECIALIST_NAMES } from "@/lib/agents/specialists";

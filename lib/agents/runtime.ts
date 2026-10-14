@@ -1,7 +1,7 @@
-// Bucle de un especialista: el LLM propone tool_calls, se ejecutan solo con executeTool
-// y los ToolResult (incluidos errores) vuelven al modelo. Nunca lanza.
+// Bucle de un especialista: el LLM propone tool_calls, se ejecutan solo
+// con el interceptor de aprobacion (executeToolGoverned) y los ToolResult (incluidos errores y pending_approval) vuelven al modelo. Nunca lanza.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { executeTool } from "@/lib/agents/executor";
+import { executeToolGoverned } from "@/lib/agents/governance";
 import type { LlmClient, LlmMessage, LlmToolCall, LlmToolResultMessage } from "@/lib/agents/llm";
 import { SPECIALISTS, type SpecialistName } from "@/lib/agents/specialists";
 import type { ToolErrorCode, ToolResult } from "@/lib/agents/types";
@@ -93,7 +93,7 @@ export async function runSpecialist(
           result = failure("EXECUTION_FAILED", `Limite de ${maxTools} herramientas por turno alcanzado; reintenta en el siguiente paso.`);
         } else {
           try {
-            result = await executeTool(agent, call.name, sanitizeInput(call.input), {
+            result = await executeToolGoverned(agent, call.name, sanitizeInput(call.input), {
               organizationId: options.organizationId,
               db: options.db,
               now: options.now,

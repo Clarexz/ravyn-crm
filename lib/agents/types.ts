@@ -46,3 +46,15 @@ export type ToolSummary = {
   description: string;
   inputSchema: Record<string, unknown>;
 };
+
+// --- Fase 2: gobernanza y aprobacion humana ---
+
+// Nivel de autonomia de la organizacion (organizations.settings.agent_autonomy).
+export type AgentAutonomy = "conservative" | "balanced" | "autonomous";
+
+// Dato que recibe el modelo cuando una accion queda en espera de aprobacion.
+export type PendingApprovalData = {
+  status: "pending_approval";
+  action_id: string;
+  summary: string;
+};
