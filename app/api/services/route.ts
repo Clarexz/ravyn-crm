@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
+import { itemToService } from "@/lib/supabase/mappers";
+import type { Item } from "@/types/database";
 
 export async function GET(request: NextRequest) {
   const ctx = await getClinicContext();
@@ -8,9 +10,10 @@ export async function GET(request: NextRequest) {
   const activeOnly = request.nextUrl.searchParams.get("active") === "true";
 
   let query = ctx.db
-    .from("services")
+    .from("items")
     .select("*")
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
+    .eq("type", "service")
     .order("name", { ascending: true });
 
   if (activeOnly) query = query.eq("active", true);
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  return NextResponse.json(((data ?? []) as Item[]).map(itemToService));
 }
 
 export async function POST(request: NextRequest) {
@@ -47,12 +50,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await ctx.db
-    .from("services")
+    .from("items")
     .insert({
-      clinic_id: ctx.clinicId,
+      organization_id: ctx.organizationId,
+      type: "service",
       name: body.name.trim(),
       description: body.description?.trim() || null,
-      cost: body.cost,
+      price: body.cost,
       color: body.color ?? "#6366f1",
       active: body.active ?? true,
     })
@@ -64,5 +68,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `${error.message}${error.hint ? ` — ${error.hint}` : ""}` }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(itemToService(data as Item), { status: 201 });
 }
