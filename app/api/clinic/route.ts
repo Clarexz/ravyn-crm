@@ -21,6 +21,9 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  if (ctx.profile.role !== "admin") {
+    return NextResponse.json({ error: "Solo un administrador puede editar la organizacion" }, { status: 403 });
+  }
 
   const body = await request.json() as {
     name?: string;

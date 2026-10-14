@@ -39,6 +39,16 @@ export async function POST(request: NextRequest) {
       doctor_notes,
       patient_notes,
     } = body;
+    // H-07: numeric inputs come from the client; reject non-finite or negative values.
+    const numericFields = { subtotal, discount_value, total, validity_days };
+    for (const [field, value] of Object.entries(numericFields)) {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+        return NextResponse.json({ error: `Valor invalido en ${field}` }, { status: 400 });
+      }
+    }
+    if (!Number.isInteger(validity_days) || validity_days < 1 || validity_days > 365) {
+      return NextResponse.json({ error: "validity_days debe ser un entero entre 1 y 365" }, { status: 400 });
+    }
     const members: MemberInput[] = Array.isArray(body.members) ? body.members : [];
     const organizationId = ctx.organizationId;
 

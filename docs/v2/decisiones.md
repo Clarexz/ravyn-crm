@@ -26,3 +26,10 @@ Formato: que se decidio, por que, alternativas descartadas.
 - Que: en la Fase 0b cada subagente es dueno de un modulo completo (ruta API + pagina + componente cliente), no de una capa.
 - Por que: ruta, pagina y componente de un mismo modulo cambian juntos; repartir por capa obliga a coordinar archivos compartidos y rompe la app entre commits. Los modulos no comparten archivos, asi que corren en paralelo en worktrees. El reparto por capa del prompt se retoma en la Fase 1.
 - Descartado: reparto estricto por capa en esta fase.
+
+## D-06 Correcciones de la revision de seguridad de la Fase 0b
+Informe completo: `docs/v2/revision-seguridad-fase0b.md`.
+- Corregido en codigo: H-01 (el webhook `appointment-created` exige `X-Webhook-Secret`, igual que `appointment-updated`; se elimino el fallback "primera organizacion"; ahora acepta `organization_id` o un nombre de sucursal exacto y unico, y responde 400 si no se resuelve), H-06 (los nombres se escapan antes de `ilike`), H-04 (`PATCH /api/clinic` exige rol admin), H-07 (los importes y `validity_days` de presupuestos se validan en el servidor).
+- Cambio de contrato n8n: el webhook ya no cae en una organizacion arbitraria. n8n debe enviar el secreto y, de preferencia, `organization_id`.
+- Pendiente de decision del dueno, no se toco: el middleware redirige a `/login` toda peticion sin sesion, incluidos los webhooks; si n8n debe llamarlos hay que excluir `/api/webhooks/` del matcher, y eso solo es seguro con el secreto ya validado. H-02 (`handle_new_user` confia en metadatos del cliente: deshabilitar registro publico en Auth o mover a `raw_app_meta_data`) y la duda sobre RLS de `public.users`.
+- Pendiente en migracion nueva (007): H-03 (quitar escritura a `authenticated` en tablas v2 y dejar solo SELECT) y H-05 (triggers de coherencia de organizacion en bookings, activities y opportunities).

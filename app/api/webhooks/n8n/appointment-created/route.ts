@@ -3,7 +3,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingToAppointment } from "@/lib/supabase/mappers";
 import type { Booking } from "@/types/database";
 
+const WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET;
+
+// Escapes LIKE wildcards so user-supplied names match literally.
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 export async function POST(req: Request) {
+  // Same shared-secret check as appointment-updated (H-01).
+  const incomingSecret = req.headers.get("x-webhook-secret");
+  if (!WEBHOOK_SECRET || incomingSecret !== WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     // 1. Extraer los datos del Webhook de n8n
     const body = await req.json();
@@ -15,7 +28,8 @@ export async function POST(req: Request) {
       sucursal, 
       inicio, 
       fin,
-      correo
+      correo,
+      organization_id
     } = body;
 
     if (!nombre || !inicio) {
@@ -24,23 +38,30 @@ export async function POST(req: Request) {
 
     const supabase = createAdminClient();
 
-    // 2. Buscar la sucursal por nombre para obtener la organizacion
+    // 2. Resolver la organizacion: por id explicito o por nombre exacto y unico.
+    // Sin fallback: si no se resuelve a una sola organizacion se rechaza (H-01, H-06).
     let organizationId = "";
-    if (sucursal) {
+    if (typeof organization_id === "string" && organization_id) {
       const { data: org } = await supabase
         .from("organizations")
         .select("id")
-        .ilike("name", `%${sucursal}%`)
-        .single();
-        
+        .eq("id", organization_id)
+        .maybeSingle();
       if (org) organizationId = org.id;
+    } else if (typeof sucursal === "string" && sucursal.trim()) {
+      const { data: orgs } = await supabase
+        .from("organizations")
+        .select("id")
+        .ilike("name", escapeLike(sucursal.trim()))
+        .limit(2);
+      if (orgs && orgs.length === 1) organizationId = orgs[0].id;
     }
-    
-    // Si no encuentra la sucursal por nombre, toma la primera disponible (fallback)
+
     if (!organizationId) {
-       const { data: firstOrg } = await supabase.from("organizations").select("id").limit(1).single();
-       if (firstOrg) organizationId = firstOrg.id;
-       else return NextResponse.json({ error: "No se encontró ninguna clínica configurada" }, { status: 500 });
+      return NextResponse.json(
+        { error: "No se pudo resolver la organizacion (envie organization_id o un nombre de sucursal unico)" },
+        { status: 400 },
+      );
     }
 
     // 3. Buscar paciente existente por WhatsApp o Correo, o crearlo si no existe
@@ -63,7 +84,7 @@ export async function POST(req: Request) {
         .from("contacts")
         .select("id")
         .eq("organization_id", organizationId)
-        .ilike("full_name", nombre)
+        .ilike("full_name", escapeLike(String(nombre)))
         .single();
       if (pByName) contactId = pByName.id;
     }
@@ -105,7 +126,7 @@ export async function POST(req: Request) {
         .select("id, price")
         .eq("type", "service")
         .eq("organization_id", organizationId)
-        .ilike("name", `%${servicio}%`)
+        .ilike("name", `%${escapeLike(String(servicio))}%`)
         .single();
         
       if (srv) {
