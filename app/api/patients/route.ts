@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
+import { contactToPatient } from "@/lib/supabase/mappers";
+import type { Contact, ContactSource } from "@/types/database";
+
+const CONTACT_SOURCES: ContactSource[] = ["whatsapp", "web", "manual", "agent_receptionist", "import"];
 
 export async function GET(request: NextRequest) {
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
-  const q = request.nextUrl.searchParams.get("q") ?? "";
+  // Se quitan caracteres que rompen la sintaxis del filtro .or() de PostgREST.
+  const q = (request.nextUrl.searchParams.get("q") ?? "").replace(/[,()]/g, " ").trim();
 
   let query = ctx.db
-    .from("patients")
+    .from("contacts")
     .select("*")
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .order("created_at", { ascending: false });
 
   if (q.length >= 1) {
@@ -22,7 +27,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(data ?? []);
+  return NextResponse.json(((data ?? []) as Contact[]).map(contactToPatient));
 }
 
 export async function POST(request: NextRequest) {
@@ -34,24 +39,29 @@ export async function POST(request: NextRequest) {
     phone?: string;
     email?: string;
     notes?: string;
-    source?: "whatsapp" | "web" | "manual";
+    source?: string;
   };
 
   if (!body.full_name?.trim()) {
     return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
   }
 
+  const source: ContactSource =
+    body.source && (CONTACT_SOURCES as string[]).includes(body.source)
+      ? (body.source as ContactSource)
+      : "manual";
+
   const payload = {
-    clinic_id: ctx.clinicId,
+    organization_id: ctx.organizationId,
     full_name: body.full_name,
     phone: body.phone || null,
     email: body.email || null,
     notes: body.notes || null,
-    source: body.source ?? "manual",
+    source,
   };
 
   const { data, error } = await ctx.db
-    .from("patients")
+    .from("contacts")
     .insert(payload)
     .select()
     .single();
@@ -61,5 +71,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `${error.message}${error.hint ? ` — ${error.hint}` : ""}` }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(contactToPatient(data as Contact), { status: 201 });
 }
