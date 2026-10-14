@@ -44,9 +44,19 @@ const NAME_WORD = "[A-ZÁÉÍÓÚÑ][\\p{L}'-]+";
 const NAME_SEQ = `${NAME_WORD}(?:\\s+${NAME_WORD}){0,2}`;
 const STOP_NAMES = new Set(["MXN", "Hola", "Quiero", "Necesito", "Por", "Dale", "Agenda", "Agendar", "Cotiza", "Registra"]);
 
+// Strong prefixes ("para", "cliente"...) name the person; weak ones ("de", "a", "con") are often
+// followed by a service ("cotizacion de Blanqueamiento"). Prefer strong, and the last match.
+function lastMatch(text: string, prefixes: string): string | null {
+  const re = new RegExp(`\\b(?:${prefixes})\\s+(${NAME_SEQ})`, "gu");
+  const all = Array.from(text.matchAll(re));
+  return all.length > 0 ? all[all.length - 1][1] : null;
+}
+
 export function extractName(text: string): string | null {
-  const prefixed = new RegExp(`\\b(?:para|a|de|cliente|paciente|contacto|con|llamado|llamada)\\s+(${NAME_SEQ})`, "u").exec(text);
-  const candidate = prefixed?.[1] ?? firstCapitalizedAfterStart(text);
+  const candidate =
+    lastMatch(text, "para|cliente|paciente|contacto|llamado|llamada") ??
+    lastMatch(text, "a|de|con") ??
+    firstCapitalizedAfterStart(text);
   if (!candidate) return null;
   const words = candidate.split(/\s+/).filter((w) => !STOP_NAMES.has(w));
   return words.length > 0 ? words.join(" ") : null;

@@ -119,3 +119,12 @@ describe("demoLlm: flujo completo mensaje -> tool_calls -> pending -> approve", 
     expect(res).toMatchObject({ ok: false, error: { code: "PERMISSION_DENIED" } });
   });
 });
+
+describe("extractName: prefijos fuertes y ultima coincidencia", () => {
+  it("prefiere el nombre tras 'para' sobre el servicio tras 'de'", async () => {
+    const { extractName } = await import("@/lib/agents/demoLlm");
+    expect(extractName("Aplica 20% de descuento en una cotizacion de Blanqueamiento para Andrea Solis Montoya")).toBe(
+      "Andrea Solis Montoya",
+    );
+  });
+});

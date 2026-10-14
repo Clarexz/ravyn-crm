@@ -36,3 +36,12 @@ Motor de agentes en `lib/agents/` y `app/api/agents/`, pruebas AGT-01 a 03. Tabl
 - Pruebas: AGT-01, AGT-02 y AGT-03 en verde (113 pruebas con LLM simulado). Compuerta: tsc, lint, test y build.
 - Pendiente fuera del repo: `ANTHROPIC_API_KEY` en Vercel; aplicar migraciones 006 y 007.
 - Siguiente: Fase 2 (interceptor de aprobacion con `isCriticalCall` de `lib/agents/tools/index.ts`, rutas approve/reject, historial de auditoria).
+
+## Fase 2 - Estado (cerrada)
+- Integrado: interceptor de aprobacion (`lib/agents/governance.ts`), rutas `GET /api/agents/actions`, `POST .../[id]/approve` y `.../reject`, LLM preprogramado (`lib/agents/demoLlm.ts`), pruebas HITL-01 a 03.
+- Modo demo integrado: base en memoria (`lib/demo/`), cableado en `lib/supabase/*` y middleware. La app completa corre sin Supabase ni claves.
+- Verificado de punta a punta contra el servidor de produccion local: 8 paginas y 7 APIs responden 200 con datos de ejemplo; chat -> accion pendiente -> aprobar -> ejecutada; segunda aprobacion = 409.
+- Compuerta: tsc, lint, 353 pruebas y build sin variables de entorno.
+
+## Fase 3 (siguiente)
+Bandeja `/agents/inbox`, centro de control `/agents/settings`, insignias humano/agente en perfiles de contacto y citas, contador de pendientes en el encabezado.
