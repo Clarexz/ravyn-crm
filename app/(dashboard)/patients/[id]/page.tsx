@@ -1,27 +1,35 @@
 import { getClinicContext } from "@/lib/supabase/auth";
 import { PatientProfileClient } from "@/components/crm/PatientProfileClient";
 import { notFound } from "next/navigation";
+import { bookingToAppointment, contactToPatient } from "@/lib/supabase/mappers";
+import type { Booking, Contact } from "@/types/database";
 
 export default async function PatientProfilePage({ params }: { params: { id: string } }) {
   const ctx = await getClinicContext();
   if (!ctx) return null;
 
-  // 1. Fetch patient
-  const { data: patient } = await ctx.db
-    .from("patients")
+  // 1. Contacto (verifica pertenencia a la organizacion)
+  const { data: contact } = await ctx.db
+    .from("contacts")
     .select("*")
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .single();
 
-  if (!patient) notFound();
+  if (!contact) notFound();
 
-  // 2. Fetch appointments
-  const { data: appointments } = await ctx.db
-    .from("appointments")
+  // 2. Reservas del contacto
+  const { data: bookings } = await ctx.db
+    .from("bookings")
     .select("*")
-    .eq("patient_id", params.id)
+    .eq("contact_id", params.id)
+    .eq("organization_id", ctx.organizationId)
     .order("scheduled_at", { ascending: false });
 
-  return <PatientProfileClient patient={patient} appointments={appointments ?? []} />;
+  return (
+    <PatientProfileClient
+      patient={contactToPatient(contact as Contact)}
+      appointments={((bookings ?? []) as Booking[]).map(bookingToAppointment)}
+    />
+  );
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClinicContext } from "@/lib/supabase/auth";
+import { contactToPatient } from "@/lib/supabase/mappers";
+import type { Contact } from "@/types/database";
 
 export async function GET(
   _request: NextRequest,
@@ -9,17 +11,17 @@ export async function GET(
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   const { data, error } = await ctx.db
-    .from("patients")
+    .from("contacts")
     .select("*")
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: "Paciente no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(contactToPatient(data as Contact));
 }
 
 export async function PATCH(
@@ -43,10 +45,10 @@ export async function PATCH(
   if (body.notes !== undefined) updates.notes = body.notes || null;
 
   const { data, error } = await ctx.db
-    .from("patients")
+    .from("contacts")
     .update(updates)
     .eq("id", params.id)
-    .eq("clinic_id", ctx.clinicId)
+    .eq("organization_id", ctx.organizationId)
     .select()
     .single();
 
@@ -54,5 +56,5 @@ export async function PATCH(
     return NextResponse.json({ error: error?.message ?? "Paciente no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(contactToPatient(data as Contact));
 }
