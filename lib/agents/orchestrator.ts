@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { LlmClient } from "@/lib/agents/llm";
 import { CLASSIFIER_PROMPT } from "@/lib/agents/prompts";
 import { runSpecialist, type ToolTrace } from "@/lib/agents/runtime";
-import { SPECIALIST_NAMES, type SpecialistName } from "@/lib/agents/specialists";
+import { loadOrgAgentConfig } from "@/lib/agents/settings";
+import { SPECIALIST_NAMES, SPECIALISTS, type SpecialistName } from "@/lib/agents/specialists";
 
 export const DEFAULT_AGENT: SpecialistName = "receptionist";
 
@@ -98,10 +99,22 @@ export type HandleMessageResult = {
   reason: string;
   reply: string;
   tools: ToolTrace[];
+  // true si el especialista elegido esta deshabilitado en el Centro de Control.
+  disabled?: boolean;
 };
 
 export async function handleMessage(text: string, ctx: HandleMessageContext): Promise<HandleMessageResult> {
   const classification = await classifyIntent(text, ctx.llm);
+  const config = await loadOrgAgentConfig(ctx.db, ctx.organizationId);
+  if (!config.agents[classification.agent].enabled) {
+    return {
+      agent: classification.agent,
+      reason: classification.reason,
+      reply: `El agente ${SPECIALISTS[classification.agent].label} esta deshabilitado en el Centro de Control. Activalo en Agentes > Configuracion para que pueda atender esta solicitud.`,
+      tools: [],
+      disabled: true,
+    };
+  }
   const run = await runSpecialist(classification.agent, text.trim(), ctx);
   return { agent: classification.agent, reason: classification.reason, reply: run.reply, tools: run.tools };
 }

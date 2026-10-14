@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { executeToolGoverned } from "@/lib/agents/governance";
 import type { LlmClient, LlmMessage, LlmToolCall, LlmToolResultMessage } from "@/lib/agents/llm";
 import { SPECIALISTS, type SpecialistName } from "@/lib/agents/specialists";
-import type { ToolErrorCode, ToolResult } from "@/lib/agents/types";
+import type { PendingApprovalData, ToolErrorCode, ToolResult } from "@/lib/agents/types";
 
 export const MAX_ITERATIONS = 6;
 export const MAX_TOOLS_PER_TURN = 4;
@@ -15,7 +15,18 @@ export type ToolTrace = {
   name: string;
   ok: boolean;
   errorCode?: ToolErrorCode;
+  // Presente si la herramienta dejo una accion en espera de aprobacion humana.
+  pending?: { actionId: string; summary: string };
 };
+
+function pendingOf(result: ToolResult): ToolTrace["pending"] {
+  if (!result.ok) return undefined;
+  const data = result.data as Partial<PendingApprovalData> | null;
+  if (data && data.status === "pending_approval" && typeof data.action_id === "string") {
+    return { actionId: data.action_id, summary: typeof data.summary === "string" ? data.summary : "" };
+  }
+  return undefined;
+}
 
 export type SpecialistRun = {
   reply: string;
@@ -101,7 +112,13 @@ export async function runSpecialist(
           } catch {
             result = failure("EXECUTION_FAILED", "La herramienta fallo de forma inesperada");
           }
-          trace.push({ name: call.name, ok: result.ok, ...(result.ok ? {} : { errorCode: result.error.code }) });
+          const pending = pendingOf(result);
+          trace.push({
+            name: call.name,
+            ok: result.ok,
+            ...(result.ok ? {} : { errorCode: result.error.code }),
+            ...(pending ? { pending } : {}),
+          });
         }
         results.push({ id: call.id, name: call.name, content: serialize(result), isError: !result.ok });
       }

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     // organizationId proviene siempre de la sesion autenticada, nunca del body.
     const result = await handleMessage(body.data.text, { llm, organizationId: ctx.organizationId, db: ctx.db });
-    return NextResponse.json({ agent: result.agent, reply: result.reply, tools: result.tools });
+    return NextResponse.json({ agent: result.agent, reply: result.reply, tools: result.tools, disabled: result.disabled === true });
   } catch (error) {
     console.error("[POST /api/agents/chat]", error);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

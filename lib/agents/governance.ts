@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { executeTool, prepareToolCall, runPrepared } from "@/lib/agents/executor";
 import type { ToolName } from "@/lib/agents/permissions";
 import { isCriticalCall, TOOL_REGISTRY } from "@/lib/agents/tools";
+import { AUTONOMY_LEVELS, DEFAULT_AUTONOMY, configFor, isAutonomy, loadOrgAgentConfig } from "@/lib/agents/settings";
 import { DISCOUNT_APPROVAL_THRESHOLD } from "@/lib/agents/tools/sales_tools";
 import type {
   AgentAutonomy,
@@ -17,8 +18,7 @@ import type {
 } from "@/lib/agents/types";
 import type { AgentAction, AgentActionStatus } from "@/types/database";
 
-export const DEFAULT_AUTONOMY: AgentAutonomy = "balanced";
-export const AUTONOMY_LEVELS: readonly AgentAutonomy[] = ["conservative", "balanced", "autonomous"];
+export { AUTONOMY_LEVELS, DEFAULT_AUTONOMY, isAutonomy };
 export const ACTION_STATUSES: readonly AgentActionStatus[] = ["pending", "approved", "rejected", "executed", "failed"];
 
 // Herramientas que no escriben (o solo registran comunicacion): nunca se frenan por autonomia.
@@ -34,10 +34,6 @@ const ALWAYS_ALLOWED_WRITES: ReadonlySet<ToolName> = new Set<ToolName>(["log_mes
 const MEDIUM_RISK_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(["create_booking", "reschedule_booking", "create_opportunity"]);
 
 export type ApprovalDecision = { required: boolean; critical: boolean; reason: string };
-
-export function isAutonomy(value: unknown): value is AgentAutonomy {
-  return typeof value === "string" && (AUTONOMY_LEVELS as readonly string[]).includes(value);
-}
 
 // Decision pura y determinista. `input` debe venir ya validado.
 export function decideApproval(level: AgentAutonomy, tool: ToolName, input: unknown): ApprovalDecision {
@@ -103,15 +99,10 @@ function riskOf(tool: ToolName, critical: boolean): ToolRisk {
   return critical ? "high" : TOOL_REGISTRY[tool].risk;
 }
 
-export async function loadAutonomy(db: SupabaseClient, organizationId: string): Promise<AgentAutonomy> {
-  try {
-    const res = await db.from("organizations").select("settings").eq("id", organizationId).maybeSingle();
-    if (res.error) return "conservative"; // ante la duda, mas estricto
-    const level = (res.data as { settings?: { agent_autonomy?: unknown } } | null)?.settings?.agent_autonomy;
-    return isAutonomy(level) ? level : DEFAULT_AUTONOMY;
-  } catch {
-    return "conservative";
-  }
+// Nivel efectivo del agente: su ajuste propio o, si no tiene, el global de la organizacion.
+export async function loadAutonomy(db: SupabaseClient, organizationId: string, agent?: AgentName): Promise<AgentAutonomy> {
+  const config = await loadOrgAgentConfig(db, organizationId);
+  return agent ? configFor(config, agent).autonomy : config.autonomy;
 }
 
 type GovCtx = Omit<ToolContext, "agent">;
@@ -127,7 +118,11 @@ export async function executeToolGoverned(
     const prepared = prepareToolCall(agent, toolName, rawInput);
     if (!prepared.ok) return prepared; // sin permiso o entrada invalida: no crea accion
 
-    const level = await loadAutonomy(ctx.db, ctx.organizationId);
+    const config = configFor(await loadOrgAgentConfig(ctx.db, ctx.organizationId), agent);
+    if (!config.enabled) {
+      return { ok: false, error: { code: "PERMISSION_DENIED", message: "El agente esta deshabilitado en el Centro de Control." } };
+    }
+    const level = config.autonomy;
     const decision = decideApproval(level, prepared.toolName, prepared.input);
     const proposedAt = (ctx.now ?? new Date()).toISOString();
 
@@ -222,6 +217,24 @@ export async function listActions(db: SupabaseClient, organizationId: string, fi
     if (res.error) return { status: 500, body: { error: "Error interno" } };
     const actions = ((res.data ?? []) as AgentAction[]).map(withReviewSeconds);
     return { status: 200, body: { actions } };
+  } catch {
+    return { status: 500, body: { error: "Error interno" } };
+  }
+}
+
+export async function countPendingActions(db: SupabaseClient, organizationId: string): Promise<number | null> {
+  try {
+    const res = await db.from("agent_actions").select("id").eq("organization_id", organizationId).eq("status", "pending");
+    return res.error ? null : (res.data ?? []).length;
+  } catch {
+    return null;
+  }
+}
+
+export async function getAction(db: SupabaseClient, organizationId: string, id: string): Promise<GovernanceOutcome> {
+  try {
+    const action = await loadAction(db, organizationId, id);
+    return action ? { status: 200, body: { action: withReviewSeconds(action) } } : { status: 404, body: { error: "Accion no encontrada" } };
   } catch {
     return { status: 500, body: { error: "Error interno" } };
   }
