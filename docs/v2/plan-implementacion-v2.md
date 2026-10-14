@@ -24,6 +24,7 @@ Ravyn CRM v2 transforma el sistema desde un CRM pasivo de registro dental hacia 
 | Fase | Enfoque Principal | Entregable Clave | Criterio de Testabilidad |
 |---|---|---|---|
 | **Fase 0** | Schema universal y migracion de datos | Tablas de organizaciones, contactos, leads, actividades y logs de agentes | Migraciones SQL ejecutadas, queries de compatibilidad validados |
+| **Fase 0b** | Cambio de la app a las tablas v2 | Rutas, contexto de auth y modulos de la app leyendo y escribiendo en `organization_id` | La app funciona completa sobre tablas v2 sin regresiones; tablas v1 sin uso |
 | **Fase 1** | Capa de Herramientas y Motor de Agentes | Catalogo de Tools con validacion Zod y Router Orquestador | Pruebas unitarias de ejecucion de tools e invocacion con mock context |
 | **Fase 2** | Sistema de Gobernanza y Human-in-the-Loop | Maquina de estados de acciones y endpoints de aprobacion | Pruebas de integracion: acciones automaticas vs en espera de aprobacion |
 | **Fase 3** | UI de Supervision y Bandeja de Aprobaciones | Bandeja de entrada de agentes y Centro de Control en Dashboard | Flujo visual e interactivo de aprobacion/rechazo con actualizacion de estado |
@@ -34,6 +35,22 @@ Ravyn CRM v2 transforma el sistema desde un CRM pasivo de registro dental hacia 
 ---
 
 ## Fase 0: Schema Universal y Abstraccion Multi-Vertical
+
+### Estado (2026-10-14): base de datos completada
+
+Migraciones en `supabase/migrations/` (cada una con su `.down.sql`), aplicadas y verificadas en la base del servidor:
+
+| Migracion | Contenido |
+|---|---|
+| 001 | Tablas v2, indices y triggers (reutiliza `update_updated_at()`) |
+| 002 | RLS por `organization_id` en las 7 tablas v2 |
+| 003 | Copia de datos v1 a v2 conservando UUID; `appointment_logs` a `activities`; plan `basic` a `starter` |
+| 004 | Hook de JWT con `organization_id`, `handle_new_user()` crea clinica y organizacion, revoke de `anon` |
+| 005 | `EXECUTE` del hook restringido a `supabase_auth_admin` |
+
+Prueba de aislamiento: `supabase/tests/fase0_isolation.sql`. Tipos v2 agregados a `types/database.ts` (conviven con los v1).
+
+Pendiente: las tablas de presupuestos (`budgets`, `budget_members`, `budget_services`) no existen en la base; se resuelven en la Fase 0b.
 
 ### Objetivo
 Generalizar el modelo de base de datos de PostgreSQL en Supabase para soportar multiples industrias, pipelines comerciales y el registro de acciones de agentes de IA, preservando la compatibilidad con los datos existentes de clinicas dentales.
@@ -128,6 +145,20 @@ CREATE TABLE agent_actions (
 - **Test DB-01:** Insertar y consultar un registro en `organizations` con industry `restaurant` y validar restricciones de esquema.
 - **Test DB-02:** Verificar aislamiento de datos por `organization_id` mediante consultas directas con filtros de tenant.
 - **Test DB-03:** Validar que `agent_actions` rechace inserciones de estados invalidos via constraint `CHECK`.
+
+---
+
+## Fase 0b: Cambio de la App a las Tablas v2
+
+### Objetivo
+Que la app lea y escriba en las tablas v2, para que los agentes de la Fase 1 trabajen sobre datos vigentes. Las tablas v1 quedan como respaldo sin uso hasta una limpieza posterior.
+
+### Alcance
+- `getClinicContext()` y `lib/supabase/*`: usar `organization_id` (el claim ya viene en el JWT).
+- Rutas de `app/api/*`: patients a contacts, appointments a bookings, services a items, clinic a organizations.
+- Modulo de presupuestos: crear sus tablas en v2 (migracion 006) y adaptar rutas y paginas.
+- Webhooks y n8n: payloads y tablas destino.
+- Orden de ejecucion: un modulo por vez, con verificacion de la app tras cada uno.
 
 ---
 
