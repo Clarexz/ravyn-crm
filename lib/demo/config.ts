@@ -2,7 +2,8 @@
 // Dueno: agente maestro. Por defecto el modo demo esta ACTIVO; para datos reales
 // definir RAVYN_DATA_MODE=live (ver docs/v2/decisiones.md, D-08).
 export function isDemoMode(): boolean {
-  return process.env.RAVYN_DATA_MODE !== "live";
+  // NEXT_PUBLIC_RAVYN_DATA_MODE lo inyecta next.config.mjs para que el navegador tambien lo vea.
+  return (process.env.RAVYN_DATA_MODE ?? process.env.NEXT_PUBLIC_RAVYN_DATA_MODE) !== "live";
 }
 
 // Identidades fijas de la organizacion y el usuario de demo.
