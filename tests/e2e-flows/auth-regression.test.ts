@@ -10,7 +10,7 @@ import { DemoDb, seedDemoData } from "@/lib/demo";
 import { DEMO_ORG_ID, DEMO_USER_ID } from "@/lib/demo/config";
 import { ROOT } from "../helpers";
 
-const auth = vi.hoisted(() => ({ user: null as null | { id: string; email?: string }, throws: false, dbCalls: 0, db: null as unknown }));
+const auth = vi.hoisted(() => ({ user: null as null | { id: string; email?: string }, throws: false, dbCalls: 0, db: null as unknown, staffCookie: false }));
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
@@ -22,8 +22,16 @@ vi.mock("@supabase/ssr", () => ({
     },
   }),
 }));
+// cookies() se usa de forma sincrona (modo demo) y con await (cliente de servidor): el objeto sirve para ambas.
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ getAll: () => [], set: () => undefined, get: () => undefined }),
+  cookies: () => {
+    const jar = {
+      getAll: () => [],
+      set: () => undefined,
+      get: (name: string) => (name === "ravyn_demo_role" && auth.staffCookie ? { name, value: "staff" } : undefined),
+    };
+    return Object.assign(Object.create(null), jar, { then: (resolve: (v: typeof jar) => void) => resolve(jar) });
+  },
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () =>
@@ -56,6 +64,7 @@ beforeEach(() => {
   auth.throws = false;
   auth.dbCalls = 0;
   auth.db = null;
+  auth.staffCookie = false;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -206,14 +215,20 @@ describe("camino live con sesion simulada", () => {
     expect((await GET()).status).toBe(401);
   });
 
-  it("la cookie ravyn_demo_role no cambia el rol en modo live", async () => {
+  it("la cookie ravyn_demo_role no cambia el usuario ni el rol en modo live (en demo si simula a staff)", async () => {
     const db = new DemoDb();
     seedDemoData(db);
     auth.db = db.asClient();
     auth.user = { id: DEMO_USER_ID };
+    auth.staffCookie = true;
     const { getClinicContext } = await import("@/lib/supabase/auth");
-    const ctx = await getClinicContext();
-    expect(ctx?.profile.role).toBe("admin");
-    expect(ctx?.supabase).not.toBeNull();
+    const live = await getClinicContext();
+    expect(live?.user.id).toBe(DEMO_USER_ID);
+    expect(live?.profile.role).toBe("admin");
+    expect(live?.supabase).not.toBeNull();
+
+    env("demo");
+    const demo = await getClinicContext();
+    expect(demo?.profile.role).toBe("staff"); // contraste: solo en demo la cookie tiene efecto
   });
 });

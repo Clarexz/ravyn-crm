@@ -61,3 +61,17 @@ describe("restablecer datos de un giro (demo)", () => {
     expect(db.tables.organizations.find((o) => o.id === DEMO_ORG_ID)?.industry).toBe("health");
   });
 });
+
+describe("fuera del modo demo", () => {
+  it("restablecer no existe en modo live (400) y no toca los datos", async () => {
+    const before = JSON.stringify(rows("contacts"));
+    process.env.RAVYN_DATA_MODE = "live";
+    try {
+      expect((await patch({ industry: "restaurant", reset: true })).status).toBe(400);
+    } finally {
+      delete process.env.RAVYN_DATA_MODE;
+    }
+    expect(JSON.stringify(rows("contacts"))).toBe(before);
+    expect(db.tables.organizations.find((o) => o.id === DEMO_ORG_ID)?.industry).toBe("health");
+  });
+});
