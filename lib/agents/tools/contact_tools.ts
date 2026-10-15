@@ -50,7 +50,7 @@ async function attachRelated(ctx: ToolContext, contacts: Row[]): Promise<Row[]> 
     opportunities: opps
       .filter((o) => o.contact_id === c.id)
       .slice(0, RELATED_PER_CONTACT)
-      .map(({ created_at: _created, contact_id: _contact, ...o }) => o),
+      .map((o) => ({ id: o.id, title: o.title, stage: o.stage, value: o.value })),
   }));
 }
 
