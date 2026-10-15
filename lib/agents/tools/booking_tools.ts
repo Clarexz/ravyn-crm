@@ -151,7 +151,8 @@ export const createBooking: ToolDefinition<z.infer<typeof createInput>> = {
     "Agenda una cita para un contacto. Rechaza fechas pasadas, horarios fuera del horario laboral y solapes con otras citas. Si es una reservacion para un grupo, indica party_size; un grupo de mas de 8 personas requiere aprobacion.",
   input: createInput,
   risk: "medium",
-  critical: false,
+  // Critica solo con party_size > PARTY_SIZE_APPROVAL_THRESHOLD (ver CRITICAL_RULES); marcada true para que la revision no la pase por alto.
+  critical: true,
   async run(ctx, input) {
     await assertOwned(ctx, "contacts", input.contact_id, "el contacto");
     const item = input.item_id ? await getOwned(ctx, "items", input.item_id, "el item del catalogo") : null;
