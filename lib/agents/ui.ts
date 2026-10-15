@@ -40,7 +40,7 @@ export const STATUS_LABELS: Record<AgentActionStatus, string> = {
 export type DiffRow = { field: string; label: string; current: string | null; proposed: string | null };
 export type ActionDiff = { kind: "create" | "update"; entity: string; target: string | null; rows: DiffRow[] };
 
-export type ActivityWithAuthor = Activity & { author_name: string | null };
+export type ActivityWithAuthor = Activity & { author_name: string | null; assignee_name: string | null };
 
 export function payloadOf(action: AgentAction): {
   summary: string;

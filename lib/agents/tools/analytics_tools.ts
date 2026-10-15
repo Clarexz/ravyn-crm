@@ -4,10 +4,15 @@ import { check, nowOf, roundMoney, type Row } from "./shared";
 import { ALL_STAGES, OPEN_STAGES } from "./sales_tools";
 
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 const staleInput = z
   .object({
     days: z.number().int().min(1).max(365).default(7),
+    // D-20: ventana en horas (p. ej. 48); si viene, manda sobre days.
+    hours: z.number().int().min(1).max(8760).optional(),
+    // Limita la busqueda a ciertas etapas abiertas (p. ej. lead y contacted para "prospectos sin respuesta").
+    stages: z.array(z.enum(OPEN_STAGES)).min(1).max(5).optional(),
     limit: z.number().int().min(1).max(50).default(20),
   })
   .strict();
@@ -15,21 +20,22 @@ const staleInput = z
 export const findStaleOpportunities: ToolDefinition<z.infer<typeof staleInput>> = {
   name: "find_stale_opportunities",
   description:
-    "Lista oportunidades abiertas sin ninguna actividad en los ultimos N dias (si nunca tuvieron actividad, cuenta desde su creacion), de la mas antigua a la mas reciente.",
+    "Lista oportunidades abiertas sin ninguna actividad en los ultimos N dias, o N horas si se indica hours (si nunca tuvieron actividad, cuenta desde su creacion), de la mas antigua a la mas reciente. Cada una trae assigned_to (el asesor responsable). stages filtra por etapa.",
   input: staleInput,
   risk: "low",
   critical: false,
   async run(ctx, input) {
     const now = nowOf(ctx);
-    const cutoff = new Date(now.getTime() - input.days * DAY_MS);
+    const windowMs = input.hours !== undefined ? input.hours * HOUR_MS : input.days * DAY_MS;
+    const cutoff = new Date(now.getTime() - windowMs);
     const oppRes = await ctx.db
       .from("opportunities")
-      .select("id, contact_id, title, stage, value, currency, created_at")
+      .select("id, contact_id, title, stage, value, currency, assigned_to, created_at")
       .eq("organization_id", ctx.organizationId)
-      .in("stage", [...OPEN_STAGES])
+      .in("stage", input.stages ? [...input.stages] : [...OPEN_STAGES])
       .limit(1000);
     const opps = (check(oppRes) ?? []) as Array<Row & { id: string; created_at: string }>;
-    if (opps.length === 0) return { days: input.days, count: 0, opportunities: [] };
+    if (opps.length === 0) return { days: input.days, ...(input.hours !== undefined ? { hours: input.hours } : {}), count: 0, opportunities: [] };
 
     const actRes = await ctx.db
       .from("activities")
@@ -51,8 +57,12 @@ export const findStaleOpportunities: ToolDefinition<z.infer<typeof staleInput>> 
       .filter((o) => o.lastAt <= cutoff.getTime())
       .sort((a, b) => a.lastAt - b.lastAt)
       .slice(0, input.limit)
-      .map(({ lastAt, ...o }) => ({ ...o, days_since_activity: Math.floor((now.getTime() - lastAt) / DAY_MS) }));
-    return { days: input.days, count: stale.length, opportunities: stale };
+      .map(({ lastAt, ...o }) => ({
+        ...o,
+        days_since_activity: Math.floor((now.getTime() - lastAt) / DAY_MS),
+        hours_since_activity: Math.floor((now.getTime() - lastAt) / HOUR_MS),
+      }));
+    return { days: input.days, ...(input.hours !== undefined ? { hours: input.hours } : {}), count: stale.length, opportunities: stale };
   },
 };
 

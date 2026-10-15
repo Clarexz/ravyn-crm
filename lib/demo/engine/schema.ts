@@ -234,11 +234,13 @@ export const SCHEMA: Record<string, TableDef> = {
       performed_by_type: enumCol(["human", "agent"]),
       performed_by_id: text(true),
       due_date: { type: "timestamptz" },
+      assigned_to: uuidCol(),
       created_at: createdAt(),
     },
     {
       fks: [
         cascadeOrg(),
+        { col: "assigned_to", ref: "users", onDelete: "set null" },
         { col: "contact_id", ref: "contacts", onDelete: "cascade" },
         { col: "opportunity_id", ref: "opportunities", onDelete: "set null" },
         { col: "booking_id", ref: "bookings", onDelete: "set null" },

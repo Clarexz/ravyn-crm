@@ -2,7 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Activity } from "@/types/database";
 
-export type ActivityWithAuthor = Activity & { author_name: string | null };
+export type ActivityWithAuthor = Activity & { author_name: string | null; assignee_name: string | null };
 
 export type ActivityFilters = { contactId?: string; bookingId?: string; limit?: number };
 
@@ -21,14 +21,20 @@ export async function listActivities(
     const rows = (res.data ?? []) as Activity[];
 
     const humanIds = Array.from(new Set(rows.filter((a) => a.performed_by_type === "human").map((a) => a.performed_by_id)));
+    const needsNames = humanIds.length > 0 || rows.some((a) => a.assigned_to);
     const names = new Map<string, string>();
-    if (humanIds.length > 0) {
+    if (needsNames) {
       const users = await db.from("users").select("id, full_name").eq("organization_id", organizationId);
       if (!users.error) {
         for (const u of (users.data ?? []) as Array<{ id: string; full_name: string }>) names.set(u.id, u.full_name);
       }
     }
-    return rows.map((a) => ({ ...a, author_name: a.performed_by_type === "human" ? (names.get(a.performed_by_id) ?? null) : null }));
+    return rows.map((a) => ({
+      ...a,
+      author_name: a.performed_by_type === "human" ? (names.get(a.performed_by_id) ?? null) : null,
+      // D-19: nombre de la persona a quien se asigno la tarea (solo usuarios de la misma organizacion).
+      assignee_name: a.assigned_to ? (names.get(a.assigned_to) ?? null) : null,
+    }));
   } catch {
     return null;
   }

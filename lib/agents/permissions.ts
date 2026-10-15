@@ -13,6 +13,7 @@ export const TOOL_NAMES = [
   "check_availability",
   "create_booking",
   "reschedule_booking",
+  "cancel_booking",
   "create_task",
   "log_message",
   "set_reminder",
@@ -27,7 +28,7 @@ export const AGENT_TOOL_PERMISSIONS: Record<AgentName, readonly ToolName[]> = {
   orchestrator: [],
   receptionist: ["search_contact", "create_contact", "update_contact_notes", "log_message", "check_availability"],
   sales: ["search_contact", "create_opportunity", "update_stage", "calculate_quote", "log_message", "create_task"],
-  booking: ["search_contact", "check_availability", "create_booking", "reschedule_booking"],
+  booking: ["search_contact", "check_availability", "create_booking", "reschedule_booking", "cancel_booking"],
   follow_up: ["search_contact", "find_stale_opportunities", "create_task", "set_reminder", "log_message"],
   analyst: ["get_org_metrics", "find_stale_opportunities", "generate_briefing"],
 };

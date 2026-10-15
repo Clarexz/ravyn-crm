@@ -257,6 +257,8 @@ export type Activity = {
   performed_by_type: "human" | "agent";
   performed_by_id: string;
   due_date?: string | null;
+  // Persona responsable de la tarea (Fase 6, migracion 008).
+  assigned_to?: string | null;
   created_at: string;
 };
 

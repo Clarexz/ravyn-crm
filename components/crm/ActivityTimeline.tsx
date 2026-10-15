@@ -64,6 +64,12 @@ export function ActivityTimeline({ contactId, bookingId, limit = 20, emptyText =
           </div>
           <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{a.title}</p>
           {a.description && <p className="text-xs text-[var(--text-secondary)]">{a.description}</p>}
+          {a.assigned_to && (
+            <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]" data-testid="activity-assignee">
+              Asignada a {a.assignee_name ?? "una persona del equipo"}
+              {a.due_date ? ` · vence ${new Date(a.due_date).toLocaleDateString("es-MX", { dateStyle: "medium" })}` : ""}
+            </p>
+          )}
         </li>
       ))}
     </ul>

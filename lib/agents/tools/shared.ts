@@ -65,6 +65,8 @@ export type ActivityInput = {
   opportunity_id?: string | null;
   booking_id?: string | null;
   due_date?: string | null;
+  // Persona (users.id de la organizacion) a quien se asigna la tarea (D-19).
+  assigned_to?: string | null;
 };
 
 // Inserta una activity con la autoria del agente.
@@ -83,6 +85,7 @@ export async function insertActivity(ctx: ToolContext, a: ActivityInput): Promis
       performed_by_type: "agent",
       performed_by_id: ctx.agent,
       due_date: a.due_date ?? null,
+      assigned_to: a.assigned_to ?? null,
     })
     .select()
     .single();

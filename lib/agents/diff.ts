@@ -33,6 +33,8 @@ const FIELD_LABELS: Record<string, string> = {
   duration_minutes: "Duracion (min)",
   due_date: "Vence",
   description: "Descripcion",
+  party_size: "Personas",
+  reason: "Motivo",
 };
 
 const labelOf = (key: string): string => FIELD_LABELS[key] ?? key;
@@ -98,6 +100,20 @@ export async function buildActionDiff(
         rows.push({ field: "duration_minutes", label: "Duracion (min)", current: formatValue(booking?.duration_minutes), proposed: formatValue(input.duration_minutes) });
       }
       return { kind: "update", entity: "Cita", target: formatValue(contact?.full_name), rows };
+    }
+    case "cancel_booking": {
+      const booking = await fetchOwned(db, organizationId, "bookings", input.booking_id);
+      const contact = await fetchOwned(db, organizationId, "contacts", booking?.contact_id);
+      return {
+        kind: "update",
+        entity: "Cita",
+        target: formatValue(contact?.full_name),
+        rows: [
+          { field: "status", label: "Estado", current: formatValue(booking?.status), proposed: "cancelled" },
+          { field: "scheduled_at", label: "Fecha y hora", current: formatValue(booking?.scheduled_at), proposed: null },
+          ...(input.reason ? [{ field: "reason", label: "Motivo", current: null, proposed: formatValue(input.reason) }] : []),
+        ],
+      };
     }
     case "update_contact_notes": {
       const contact = await fetchOwned(db, organizationId, "contacts", input.contact_id);

@@ -23,6 +23,8 @@ import type { ToolContext } from "@/lib/agents/types";
 import { addDays, localIso, zonedToUtc } from "@/lib/industry/time";
 
 const MAX_RANGE_DAYS = 31;
+// D-18: un grupo de mas de 8 personas siempre exige aprobacion humana (coincide con la directriz del paquete de restaurante).
+export const PARTY_SIZE_APPROVAL_THRESHOLD = 8;
 const DAY_MS = 86_400_000;
 const MAX_SLOTS = 300;
 
@@ -137,6 +139,8 @@ const createInput = z
     item_id: z.uuid().optional(),
     scheduled_at: dateTime,
     duration_minutes: duration.default(30),
+    // Numero de personas (comensales, asistentes). Mas de PARTY_SIZE_APPROVAL_THRESHOLD es una llamada critica.
+    party_size: z.number().int().min(1).max(500).optional(),
     notes: z.string().trim().min(1).max(1000).optional(),
   })
   .strict();
@@ -144,7 +148,7 @@ const createInput = z
 export const createBooking: ToolDefinition<z.infer<typeof createInput>> = {
   name: "create_booking",
   description:
-    "Agenda una cita para un contacto. Rechaza fechas pasadas, horarios fuera del horario laboral y solapes con otras citas.",
+    "Agenda una cita para un contacto. Rechaza fechas pasadas, horarios fuera del horario laboral y solapes con otras citas. Si es una reservacion para un grupo, indica party_size; un grupo de mas de 8 personas requiere aprobacion.",
   input: createInput,
   risk: "medium",
   critical: false,
@@ -165,6 +169,7 @@ export const createBooking: ToolDefinition<z.infer<typeof createInput>> = {
         service_snapshot: item ? (item.name as string) : null,
         cost_at_booking: item ? roundMoney(Number(item.price)) : null,
         notes: input.notes ?? null,
+        metadata: input.party_size ? { party_size: input.party_size } : {},
         source: "agent_booking",
       })
       .select()
@@ -220,5 +225,45 @@ export const rescheduleBooking: ToolDefinition<z.infer<typeof rescheduleInput>> 
       booking_id: input.booking_id,
     });
     return { booking: updated, previous_scheduled_at: previous };
+  },
+};
+
+const cancelInput = z
+  .object({
+    booking_id: z.uuid(),
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+
+// D-17: cancelar es siempre critico (ver CRITICAL_RULES); la herramienta solo corre tras la aprobacion de un administrador.
+export const cancelBooking: ToolDefinition<z.infer<typeof cancelInput>> = {
+  name: "cancel_booking",
+  description:
+    "Cancela una cita pendiente o confirmada y lo registra en el historial. Siempre requiere aprobacion de un administrador; no sirve para citas ya canceladas, completadas o no asistidas.",
+  input: cancelInput,
+  risk: "high",
+  critical: true,
+  async run(ctx, input) {
+    const booking = await getOwned(ctx, "bookings", input.booking_id, "la cita");
+    if (booking.status !== "pending" && booking.status !== "confirmed") {
+      throw invalid("Solo se pueden cancelar citas pendientes o confirmadas.");
+    }
+    const previous = booking.status as string;
+    const res = await ctx.db
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("organization_id", ctx.organizationId)
+      .eq("id", input.booking_id)
+      .select()
+      .single();
+    const updated = check(res) as Row;
+    await insertActivity(ctx, {
+      type: "note",
+      title: `Cita cancelada por agente (${previous} a cancelled)`,
+      description: input.reason ?? null,
+      contact_id: (booking.contact_id as string | null) ?? null,
+      booking_id: input.booking_id,
+    });
+    return { booking: updated, previous_status: previous };
   },
 };

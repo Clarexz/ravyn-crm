@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "@/lib/agents/types";
+import type { ToolContext, ToolDefinition } from "@/lib/agents/types";
 import { check, escapeLike, getOwned, insertActivity, nowOf, quoteOrValue, type Row } from "./shared";
 
 const phoneSchema = z
@@ -16,10 +16,48 @@ const searchInput = z
 
 const CONTACT_COLUMNS = "id, full_name, phone, email, company_name, tags, notes, source, created_at";
 
+const RELATED_PER_CONTACT = 3;
+
+// D-17: los agentes no tienen herramienta para listar citas ni oportunidades; sin sus ids no podrian cancelar,
+// reprogramar ni cerrar. Cada contacto trae sus proximas citas vivas y sus oportunidades mas recientes
+// (siempre filtradas por organizacion; solo lectura).
+async function attachRelated(ctx: ToolContext, contacts: Row[]): Promise<Row[]> {
+  if (contacts.length === 0) return contacts;
+  const ids = contacts.map((c) => c.id as string);
+  const [bookRes, oppRes] = await Promise.all([
+    ctx.db
+      .from("bookings")
+      .select("id, contact_id, scheduled_at, duration_minutes, status")
+      .eq("organization_id", ctx.organizationId)
+      .in("contact_id", ids)
+      .in("status", ["pending", "confirmed"])
+      .gte("scheduled_at", nowOf(ctx).toISOString())
+      .order("scheduled_at", { ascending: true })
+      .limit(200),
+    ctx.db
+      .from("opportunities")
+      .select("id, contact_id, title, stage, value, created_at")
+      .eq("organization_id", ctx.organizationId)
+      .in("contact_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+  const bookings = (check(bookRes) ?? []) as Row[];
+  const opps = (check(oppRes) ?? []) as Row[];
+  return contacts.map((c) => ({
+    ...c,
+    upcoming_bookings: bookings.filter((b) => b.contact_id === c.id).slice(0, RELATED_PER_CONTACT),
+    opportunities: opps
+      .filter((o) => o.contact_id === c.id)
+      .slice(0, RELATED_PER_CONTACT)
+      .map(({ created_at: _created, contact_id: _contact, ...o }) => o),
+  }));
+}
+
 export const searchContact: ToolDefinition<z.infer<typeof searchInput>> = {
   name: "search_contact",
   description:
-    "Busca contactos de la organizacion por nombre, telefono o correo (coincidencia parcial, sin distinguir mayusculas).",
+    "Busca contactos de la organizacion por nombre, telefono o correo (coincidencia parcial, sin distinguir mayusculas). Cada contacto incluye sus proximas citas (upcoming_bookings con id) y sus oportunidades recientes (opportunities con id).",
   input: searchInput,
   risk: "low",
   critical: false,
@@ -33,7 +71,7 @@ export const searchContact: ToolDefinition<z.infer<typeof searchInput>> = {
       .order("full_name", { ascending: true })
       .limit(input.limit);
     const contacts = (check(res) ?? []) as Row[];
-    return { count: contacts.length, contacts };
+    return { count: contacts.length, contacts: await attachRelated(ctx, contacts) };
   },
 };
 

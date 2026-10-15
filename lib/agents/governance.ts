@@ -7,6 +7,7 @@ import { executeTool, prepareToolCall, runPrepared } from "@/lib/agents/executor
 import type { ToolName } from "@/lib/agents/permissions";
 import { isCriticalCall, TOOL_REGISTRY } from "@/lib/agents/tools";
 import { AUTONOMY_LEVELS, DEFAULT_AUTONOMY, configFor, isAutonomy, loadOrgAgentConfig } from "@/lib/agents/settings";
+import { PARTY_SIZE_APPROVAL_THRESHOLD } from "@/lib/agents/tools/booking_tools";
 import { DISCOUNT_APPROVAL_THRESHOLD } from "@/lib/agents/tools/sales_tools";
 import type {
   AgentAutonomy,
@@ -58,7 +59,11 @@ export function decideApproval(level: AgentAutonomy, tool: ToolName, input: unkn
 }
 
 function criticalReason(tool: ToolName, input: unknown): string {
-  const i = (input ?? {}) as { stage?: unknown; discount_percent?: unknown };
+  const i = (input ?? {}) as { stage?: unknown; discount_percent?: unknown; party_size?: unknown };
+  if (tool === "cancel_booking") return "Cancelar una cita es una accion critica: solo un administrador puede aprobarla.";
+  if (tool === "create_booking" && typeof i.party_size === "number") {
+    return `Una reservacion para ${i.party_size} personas supera el limite de ${PARTY_SIZE_APPROVAL_THRESHOLD} que un agente puede confirmar solo.`;
+  }
   if (tool === "update_stage") return `Cerrar una oportunidad como ${String(i.stage) === "won" ? "ganada" : "perdida"} es una accion critica.`;
   if (typeof i.discount_percent === "number") {
     return `Un descuento de ${i.discount_percent}% supera el limite de ${DISCOUNT_APPROVAL_THRESHOLD}% que un agente puede aplicar solo.`;
@@ -79,7 +84,9 @@ export function summarizeAction(tool: ToolName, input: unknown): string {
     case "calculate_quote":
       return `Aplicar una cotizacion${discount}.`;
     case "create_booking":
-      return `Agendar una cita el ${s(i.scheduled_at)} (${String(i.duration_minutes ?? 30)} min).`;
+      return `Agendar una cita el ${s(i.scheduled_at)} (${String(i.duration_minutes ?? 30)} min)${typeof i.party_size === "number" ? ` para ${i.party_size} personas` : ""}.`;
+    case "cancel_booking":
+      return `Cancelar la cita ${s(i.booking_id)}${s(i.reason) ? ` (motivo: ${s(i.reason)})` : ""}.`;
     case "reschedule_booking":
       return `Reprogramar la cita ${s(i.booking_id)} para el ${s(i.new_scheduled_at)}.`;
     case "create_contact":

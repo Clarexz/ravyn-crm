@@ -25,7 +25,7 @@ export type Classification = {
 // Palabras clave (sin acentos, en minuscula) por especialista. Cada una se busca al inicio de palabra.
 const KEYWORDS: Record<SpecialistName, string[]> = {
   sales: ["cotiz", "presupuesto", "precio", "descuento", "costo", "tarifa", "propuesta", "comprar", "venta", "oportunidad"],
-  booking: ["agend", "cita", "reserv", "disponib", "horario", "reprogram", "turno", "cancelar"],
+  booking: ["agend", "cita", "reserv", "disponib", "horario", "reprogram", "turno", "cancel"],
   follow_up: ["seguimiento", "sin respuesta", "no ha respondido", "no contesta", "no contesto", "recordatorio", "recordar", "prospecto", "pendiente"],
   analyst: ["reporte", "metrica", "estadistica", "indicador", "kpi", "ingresos", "conversion", "desempeno", "resumen del mes"],
   receptionist: ["hola", "buenos dias", "buenas tardes", "buenas noches", "alta", "registrar", "nuevo cliente", "dar de alta", "datos de contacto"],

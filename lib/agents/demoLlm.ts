@@ -85,6 +85,26 @@ function extractPercent(text: string): number | undefined {
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : undefined;
 }
 
+// "grupo de 12", "para 12 personas", "12 comensales": numero de personas de una reservacion.
+function extractPartySize(text: string): number | undefined {
+  const n = normalize(text);
+  const m =
+    /\b(\d{1,3})\s*(?:personas|comensales|invitados|asistentes|lugares|pax)\b/.exec(n) ??
+    /\b(?:grupo|mesa|reservacion|reserva)\s+(?:de|para)\s+(\d{1,3})\b/.exec(n);
+  if (!m) return undefined;
+  const v = Number(m[1]);
+  return Number.isInteger(v) && v >= 1 && v <= 500 ? v : undefined;
+}
+
+// "48 horas", "2 dias": ventana de inactividad pedida de forma explicita, en horas.
+function extractWindowHours(text: string): number | undefined {
+  const n = normalize(text);
+  const h = /\b(\d{1,4})\s*(?:horas|hrs|h)\b/.exec(n);
+  if (h) return Number(h[1]);
+  const d = /\b(\d{1,3})\s*dias?\b/.exec(n);
+  return d ? Number(d[1]) * 24 : undefined;
+}
+
 function extractAmount(text: string): number | undefined {
   const m = /\$\s?(\d[\d,]*(?:\.\d+)?)/.exec(text);
   if (!m) return undefined;
@@ -197,6 +217,8 @@ function salesFlow(text: string, history: Entry[], pack: IndustryPack): LlmRespo
 
 function bookingFlow(text: string, history: Entry[], now: Date, pack: IndustryPack): LlmResponse {
   const name = extractName(text);
+  const n = normalize(text);
+  const intent = /\bcancel/.test(n) ? "cancel" : /\breprogram/.test(n) ? "reschedule" : "create";
   if (history.length === 0) {
     return name ? call(history, "search_contact", { query: name, limit: 5 }) : reply(needName(pack));
   }
@@ -207,45 +229,118 @@ function bookingFlow(text: string, history: Entry[], now: Date, pack: IndustryPa
     const b = (booked.result as { ok: true; data: { booking?: Row } }).data.booking ?? {};
     return reply(`Agende la ${pack.labels.booking.singular.toLowerCase()} para el ${String(b.scheduled_at)}.`);
   }
+  const cancelled = last(history, "cancel_booking");
+  if (cancelled) {
+    return reply(special(cancelled) ?? `Cancele la ${pack.labels.booking.singular.toLowerCase()} y quedo registrado en el historial.`);
+  }
+  const moved = last(history, "reschedule_booking");
+  if (moved) {
+    const s = special(moved);
+    if (s) return reply(s);
+    const b = (moved.result as { ok: true; data: { booking?: Row } }).data.booking ?? {};
+    return reply(`Reprograme la ${pack.labels.booking.singular.toLowerCase()} para el ${String(b.scheduled_at)}.`);
+  }
   const { contact, response } = pickContact(history, name ?? "", pack);
   if (response || !contact) return response ?? reply(needName(pack));
+
+  if (intent === "cancel" || intent === "reschedule") {
+    const upcoming = (contact.upcoming_bookings as Row[] | undefined) ?? [];
+    const target = upcoming[0];
+    const noun = pack.labels.booking.singular.toLowerCase();
+    if (!target) return reply(`${String(contact.full_name)} no tiene ${pack.labels.booking.plural.toLowerCase()} proximas que ${intent === "cancel" ? "cancelar" : "reprogramar"}.`);
+    if (intent === "cancel") {
+      return call(history, "cancel_booking", { booking_id: target.id, reason: `Solicitud recibida: ${text.slice(0, 200)}` });
+    }
+    const availability = last(history, "check_availability");
+    if (!availability) {
+      const date = targetDate(text, now);
+      return call(history, "check_availability", { date_from: date, date_to: date, duration_minutes: Number(target.duration_minutes) || 30 });
+    }
+    const err = special(availability);
+    if (err) return reply(err);
+    const first = availabilityDays(availability).flatMap((d) => d.slots)[0];
+    if (!first) return reply(`No hay espacios libres en esa fecha para reprogramar la ${noun}. Indica otro dia.`);
+    return call(history, "reschedule_booking", { booking_id: target.id, new_scheduled_at: first.start });
+  }
+
+  // Una reservacion para un grupo dura mas (90 min) y declara party_size: si supera el limite sera una llamada critica.
+  const party = extractPartySize(text);
+  const minutes = party !== undefined ? 90 : 30;
   const availability = last(history, "check_availability");
   if (!availability) {
     const date = targetDate(text, now);
-    return call(history, "check_availability", { date_from: date, date_to: date, duration_minutes: 30 });
+    return call(history, "check_availability", { date_from: date, date_to: date, duration_minutes: minutes });
   }
   const s = special(availability);
   if (s) return reply(s);
-  const days = (availability.result as { ok: true; data: { days?: Array<{ slots: Array<{ start: string }> }> } }).data.days ?? [];
-  const first = days.flatMap((d) => d.slots)[0];
+  const first = availabilityDays(availability).flatMap((d) => d.slots)[0];
   if (!first) return reply("No hay espacios libres en esa fecha. Indica otro dia para revisar la agenda.");
   return call(history, "create_booking", {
     contact_id: contact.id,
     scheduled_at: first.start,
-    duration_minutes: 30,
+    duration_minutes: minutes,
+    ...(party !== undefined ? { party_size: party } : {}),
     notes: "Cita propuesta por el asistente",
   });
 }
 
-function followUpFlow(history: Entry[]): LlmResponse {
-  if (history.length === 0) return call(history, "find_stale_opportunities", { days: 7 });
-  const task = last(history, "create_task");
-  if (task) {
-    const s = special(task);
-    return reply(s ?? "Cree la tarea de seguimiento y quedo registrada.");
+function availabilityDays(entry: Entry): Array<{ slots: Array<{ start: string }> }> {
+  return (entry.result as { ok: true; data: { days?: Array<{ slots: Array<{ start: string }> }> } }).data.days ?? [];
+}
+
+function followUpFlow(text: string, history: Entry[], now: Date): LlmResponse {
+  // Con una ventana explicita ("48 horas", "2 dias") se buscan prospectos (lead/contactado) sin actividad en ese lapso
+  // y se deja una tarea de recordatorio para el asesor de cada uno (hasta 3 por turno). Sin ventana: modo general (7 dias, una tarea).
+  const hours = extractWindowHours(text);
+  if (history.length === 0) {
+    return hours !== undefined
+      ? call(history, "find_stale_opportunities", { hours, stages: ["lead", "contacted"], limit: 10 })
+      : call(history, "find_stale_opportunities", { days: 7 });
+  }
+  const tasks = history.filter((e) => e.name === "create_task");
+  if (tasks.length > 0) {
+    const pendings = tasks.map(special).filter((m): m is string => m !== null);
+    const done = tasks.length - pendings.length;
+    if (hours !== undefined) {
+      const total = Number((last(history, "find_stale_opportunities")?.result as { data?: { count?: number } } | null | undefined)?.data?.count ?? tasks.length);
+      const parts = [
+        done > 0 ? `Cree ${done} tarea(s) de recordatorio para el asesor responsable.` : "",
+        ...pendings,
+        total > tasks.length ? `Quedan ${total - tasks.length} prospecto(s) mas sin respuesta; pideme revisarlos otra vez para continuar.` : "",
+      ].filter(Boolean);
+      return reply(parts.join(" "));
+    }
+    return reply(pendings[0] ?? "Cree la tarea de seguimiento y quedo registrada.");
   }
   const stale = last(history, "find_stale_opportunities");
   const s = stale ? special(stale) : null;
   if (s) return reply(s);
   const opps = (stale?.result && stale.result.ok ? (stale.result.data as { opportunities?: Row[] }).opportunities : null) ?? [];
-  if (opps.length === 0) return reply("No hay oportunidades sin actividad en los ultimos 7 dias. Todo al dia.");
-  const o = opps[0];
-  return call(history, "create_task", {
-    title: `Dar seguimiento a ${String(o.title)}`,
-    description: `Hay ${opps.length} oportunidad(es) sin actividad reciente.`,
-    ...(typeof o.contact_id === "string" ? { contact_id: o.contact_id } : {}),
-    ...(typeof o.id === "string" ? { opportunity_id: o.id } : {}),
-  });
+  if (opps.length === 0) {
+    return reply(hours !== undefined ? `No hay prospectos sin respuesta en las ultimas ${hours} horas. Todo al dia.` : "No hay oportunidades sin actividad en los ultimos 7 dias. Todo al dia.");
+  }
+  if (hours === undefined) {
+    const o = opps[0];
+    return call(history, "create_task", {
+      title: `Dar seguimiento a ${String(o.title)}`,
+      description: `Hay ${opps.length} oportunidad(es) sin actividad reciente.`,
+      ...(typeof o.contact_id === "string" ? { contact_id: o.contact_id } : {}),
+      ...(typeof o.id === "string" ? { opportunity_id: o.id } : {}),
+    });
+  }
+  const toolCalls: LlmToolCall[] = opps.slice(0, 3).map((o, i) => ({
+    id: `demo_call_${history.length + i + 1}`,
+    name: "create_task",
+    input: {
+      title: `Dar seguimiento a ${String(o.title)}`,
+      description: `Sin respuesta ni actividad desde hace ${Number(o.hours_since_activity ?? hours)} horas (limite de ${hours} horas).`,
+      due_date: new Date(now.getTime() + DAY_MS).toISOString(),
+      ...(typeof o.contact_id === "string" ? { contact_id: o.contact_id } : {}),
+      ...(typeof o.id === "string" ? { opportunity_id: o.id } : {}),
+      ...(typeof o.assigned_to === "string" ? { assigned_to: o.assigned_to } : {}),
+    },
+  }));
+  return { text: "", toolCalls, stopReason: "tool_use" };
 }
 
 function analystFlow(history: Entry[]): LlmResponse {
@@ -318,7 +413,7 @@ export class DemoLlmClient implements LlmClient {
         response = bookingFlow(text, history, now, pack);
         break;
       case "follow_up":
-        response = followUpFlow(history);
+        response = followUpFlow(text, history, now);
         break;
       case "analyst":
         response = analystFlow(history);
