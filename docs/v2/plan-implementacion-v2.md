@@ -332,6 +332,9 @@ Asegurar la estabilidad operativa, la seguridad en el manejo de datos multi-tena
    - Deteccion de lead sin respuesta por el agente de seguimiento tras 48 horas.
    - Creacion automatica de tarea de recordatorio asignada al asesor humano.
 
+### Estado (2026-10-15): COMPLETADA y certificada en modo demo
+Ver `certificacion-fase6.md` (matriz de requisitos, mediciones y pendientes) y D-17 a D-23.
+
 ### Criterios de Aceptacion y Medicion
 - Cero regresiones en la funcionalidad existente de autenticacion y gestion de citas.
 - 100% de las acciones criticas requieren intervencion humana demostrable.

@@ -75,7 +75,7 @@ Un solo dueno por archivo; el maestro hizo toda la fase (modulos con contrato co
 | 4-7 | Pruebas IND-01 e IND-02 (vitest y Playwright) | `tests/industry/*`, `e2e/industry.spec.ts` | integrado |
 | 4-8 | Revision de seguridad | `docs/v2/revision-seguridad-fase4.md` | integrada |
 
-## Fase 5 - Estado (cerrada, a la espera de confirmacion para la Fase 6)
+## Fase 5 - Estado (cerrada)
 Un solo dueno por archivo; el maestro hizo toda la fase (ver D-14 a D-16).
 
 | Id | Tarea | Archivos | Estado |
@@ -87,5 +87,18 @@ Un solo dueno por archivo; el maestro hizo toda la fase (ver D-14 a D-16).
 | 5-5 | Pruebas ANL-01, ANL-02, Kanban (vitest) y Playwright | `tests/pipeline/*`, `e2e/pipeline.spec.ts` | integrado |
 | 5-6 | Revision de seguridad | `docs/v2/revision-seguridad-fase5.md` | integrada |
 
-## Fase 6 (siguiente)
-Pruebas de integracion end-to-end en tres industrias. No iniciada: se espera la confirmacion del dueno.
+## Fase 6 - Estado (cerrada: certificada en modo demo)
+Un solo dueno por archivo; el maestro hizo toda la fase (ver D-23). Resultados y matriz en `certificacion-fase6.md`.
+
+| Id | Tarea | Archivos | Estado |
+|---|---|---|---|
+| 6-1 | `cancel_booking` critica, ids visibles en `search_contact` (D-17) | `lib/agents/tools/{booking,contact}_tools.ts`, `permissions.ts`, `governance.ts`, `diff.ts` | integrado |
+| 6-2 | Limite de comensales como regla critica y `CRITICAL_RULES` (D-18, D-22) | `lib/agents/tools/{index,booking_tools}.ts`, `governance.ts` | integrado |
+| 6-3 | Tareas asignadas a una persona, migracion 008 sin aplicar (D-19) | `lib/agents/tools/{activity_tools,shared}.ts`, `lib/activities.ts`, `supabase/migrations/008_*`, `ActivityTimeline.tsx` | integrado |
+| 6-4 | Seguimiento a las 48 horas (D-20) y flujos del LLM de demo | `analytics_tools.ts`, `demoLlm.ts`, `prompts.ts` | integrado |
+| 6-5 | Pruebas vitest: 3 escenarios, matriz critica, cobertura por herramienta, aislamiento, autenticacion y citas | `tests/e2e-flows/*` | integrado |
+| 6-6 | Playwright de los 3 escenarios con capturas de escritorio y movil | `e2e/scenarios.spec.ts`, `docs/v2/capturas-fase6/` | integrado |
+| 6-7 | Restablecer datos de un giro (D-21) y recordatorio de cita con sesion (R6-01) | `lib/demo/verticals.ts`, `app/api/organization/schema`, `app/api/appointments/[id]/remind` | integrado |
+| 6-8 | Certificacion y revision de seguridad | `docs/v2/certificacion-fase6.md`, `docs/v2/revision-seguridad-fase6.md` | integrada |
+
+Siguiente paso (decision del dueno): paso a datos reales. Pendientes en `certificacion-fase6.md`.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { DemoDb } from "@/lib/demo";
 import { isDemoMode } from "@/lib/demo/config";
-import { switchDemoVertical } from "@/lib/demo/verticals";
+import { resetDemoVertical, switchDemoVertical } from "@/lib/demo/verticals";
 import { guardMutation } from "@/lib/http/requestGuard";
 import { packFor, SELECTABLE_INDUSTRIES, type TenantConfig } from "@/lib/industry/packs";
 import { applyTenantChange, loadTenantConfig } from "@/lib/industry/server";
@@ -39,9 +39,12 @@ const bodySchema = z
   .object({
     industry: z.enum(SELECTABLE_INDUSTRIES).optional(),
     timezone: z.string().trim().min(1).max(64).optional(),
+    // Solo demo: regenera los datos de ejemplo del giro indicado (D-21). Exige industry.
+    reset: z.literal(true).optional(),
   })
   .strict()
-  .refine((b) => b.industry !== undefined || b.timezone !== undefined, { message: "Nada que cambiar" });
+  .refine((b) => b.industry !== undefined || b.timezone !== undefined, { message: "Nada que cambiar" })
+  .refine((b) => b.reset === undefined || b.industry !== undefined, { message: "reset exige industry" });
 
 // Solo un administrador cambia la industria o la zona horaria de SU organizacion (el id sale de la sesion).
 export async function PATCH(request: NextRequest) {
@@ -64,9 +67,16 @@ export async function PATCH(request: NextRequest) {
 
   try {
     if (body.data.industry !== undefined) {
+      if (body.data.reset && !(isDemoMode() && ctx.db instanceof DemoDb)) {
+        return NextResponse.json({ error: "Restablecer datos solo existe en modo demo" }, { status: 400 });
+      }
+      if (body.data.reset && body.data.industry === "health") {
+        return NextResponse.json({ error: "Los datos de salud no se pueden restablecer" }, { status: 400 });
+      }
       if (isDemoMode() && ctx.db instanceof DemoDb) {
         // Demo: ademas de la configuracion, cambian los datos de ejemplo al giro elegido.
-        switchDemoVertical(ctx.db, ctx.organizationId, body.data.industry);
+        if (body.data.reset) resetDemoVertical(ctx.db, ctx.organizationId, body.data.industry);
+        else switchDemoVertical(ctx.db, ctx.organizationId, body.data.industry);
       } else {
         const out = await applyTenantChange(ctx.db, ctx.organizationId, { industry: body.data.industry });
         if (!out.ok) return NextResponse.json({ error: out.error }, { status: 400 });

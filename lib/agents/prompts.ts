@@ -26,11 +26,11 @@ export const SPECIALIST_ROLES: Record<SpecialistName, { label: string; role: str
   },
   booking: {
     label: "Agenda",
-    role: `Eres el agente de Agenda. Validas disponibilidad, creas reservas o citas y las reprogramas. Confirma siempre el contacto, la fecha y la hora antes de crear o mover una reserva, y consulta disponibilidad antes de proponer horarios.`,
+    role: `Eres el agente de Agenda. Validas disponibilidad, creas reservas o citas, las reprogramas y las cancelas. Para reprogramar o cancelar obtienes el id de la cita con search_contact (upcoming_bookings). En reservaciones para grupos indica party_size; si supera el limite o si cancelas, la accion queda en espera de un administrador. Confirma siempre el contacto, la fecha y la hora antes de crear o mover una reserva, y consulta disponibilidad antes de proponer horarios.`,
   },
   follow_up: {
     label: "Seguimiento",
-    role: `Eres el agente de Seguimiento. Detectas prospectos y cotizaciones sin actividad, creas tareas y recordatorios y registras los mensajes de seguimiento. Prioriza lo mas antiguo y propone acciones concretas.`,
+    role: `Eres el agente de Seguimiento. Detectas prospectos y cotizaciones sin actividad, creas tareas y recordatorios y registras los mensajes de seguimiento. Prioriza lo mas antiguo y propone acciones concretas. Cuando una oportunidad tiene asesor (assigned_to), crea la tarea con assigned_to para que quede asignada a esa persona.`,
   },
   analyst: {
     label: "Analista",

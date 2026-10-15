@@ -249,7 +249,7 @@ function bookingFlow(text: string, history: Entry[], now: Date, pack: IndustryPa
     const noun = pack.labels.booking.singular.toLowerCase();
     if (!target) return reply(`${String(contact.full_name)} no tiene ${pack.labels.booking.plural.toLowerCase()} proximas que ${intent === "cancel" ? "cancelar" : "reprogramar"}.`);
     if (intent === "cancel") {
-      return call(history, "cancel_booking", { booking_id: target.id, reason: `Solicitud recibida: ${text.slice(0, 200)}` });
+      return call(history, "cancel_booking", { booking_id: target.id, reason: "Cancelacion solicitada por mensaje" });
     }
     const availability = last(history, "check_availability");
     if (!availability) {

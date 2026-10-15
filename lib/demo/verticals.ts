@@ -301,3 +301,21 @@ export function switchDemoVertical(db: DemoDb, orgId: string, industry: Industry
   });
   return { industry, restored };
 }
+
+// Restablece los datos de ejemplo de un giro (D-21, solo demo): descarta los cambios hechos en ese espacio de trabajo y deja
+// a la organizacion en ese giro con datos recien generados. Solo toca filas de UNA organizacion. Salud no se admite: su semilla
+// es la de la base completa y no se genera por organizacion.
+export function resetDemoVertical(db: DemoDb, orgId: string, industry: IndustryType, now: Date = db.now()): VerticalSwitchResult {
+  const org = db.tables.organizations.find((o) => o.id === orgId);
+  if (!org) throw new Error("Organizacion no encontrada");
+  if (industry === "health" || !SAMPLES[industry]) throw new Error("Este giro no se puede restablecer");
+  if (org.industry === industry) {
+    db.transaction(() => {
+      db.takeOrgRows(orgId); // se descartan
+      insertSample(db, orgId, industry, packFor(industry), now);
+    });
+    return { industry, restored: false };
+  }
+  db.workspaceStash.get(orgId)?.delete(industry);
+  return switchDemoVertical(db, orgId, industry, now);
+}
