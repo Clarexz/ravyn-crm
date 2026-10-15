@@ -100,7 +100,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Directorio de {L.contact.plural}</h1>
-          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1">Base de datos centralizada de la clínica</p>
+          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1">Base de datos centralizada de {L.contact.plural.toLowerCase()}</p>
         </div>
         <Button
           size="sm"
@@ -223,7 +223,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Notas Clínicas</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest">Notas</Label>
               <Textarea
                 value={newPatient.notes}
                 onChange={(e) => setNewPatient((p) => ({ ...p, notes: e.target.value }))}

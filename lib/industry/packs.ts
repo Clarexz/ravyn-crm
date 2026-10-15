@@ -259,13 +259,21 @@ export function resolveTenantConfig(org: OrgLike | null | undefined): TenantConf
   };
 }
 
+// Los textos editables por la organizacion (nombre, etiquetas) llegan al prompt: una sola linea, sin comillas ni longitud excesiva.
+const oneLine = (v: string, max = 60): string => v.replace(/[\r\n"\\]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+
 // Texto que se inyecta en el prompt de los agentes (hueco `industryContext`).
 export function buildIndustryContext(config: TenantConfig, now: Date = new Date()): string {
-  const l = config.labels;
+  const l = {
+    contact: { singular: oneLine(config.labels.contact.singular), plural: oneLine(config.labels.contact.plural) },
+    booking: { singular: oneLine(config.labels.booking.singular), plural: oneLine(config.labels.booking.plural) },
+    item: { singular: oneLine(config.labels.item.singular), plural: oneLine(config.labels.item.plural) },
+    budget: { singular: oneLine(config.labels.budget.singular), plural: oneLine(config.labels.budget.plural) },
+  };
   const days = ["", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
   const open = config.businessHours.days.map((d) => days[d === 0 ? 7 : d]).filter(Boolean).join(", ");
   const lines = [
-    `Negocio: ${config.organizationName || "la organizacion"}, ${config.agent.business} (industria: ${config.industry}).`,
+    `Negocio: ${oneLine(config.organizationName, 80) || "la organizacion"}, ${config.agent.business} (industria: ${config.industry}).`,
     `Vocabulario obligatorio: al cliente final llamalo "${l.contact.singular.toLowerCase()}" (plural "${l.contact.plural.toLowerCase()}"); a la agenda, "${l.booking.plural.toLowerCase()}" (una "${l.booking.singular.toLowerCase()}"); al catalogo, "${l.item.plural.toLowerCase()}"; a las propuestas economicas, "${l.budget.plural.toLowerCase()}". No uses otros terminos para estos conceptos.`,
     `Zona horaria de la organizacion: ${config.timezone}. Hora local actual: ${formatInZone(now, config.timezone)}. Horario laboral (hora local): ${config.businessHours.start} a ${config.businessHours.end}, ${open}. Las herramientas reciben y devuelven horas en UTC; al hablar con la persona usa siempre la hora local.`,
     `Al atender a un ${l.contact.singular.toLowerCase()} nuevo, solicita: ${config.agent.intake}.`,

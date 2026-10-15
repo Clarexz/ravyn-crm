@@ -111,11 +111,11 @@ export function ServicesClient({ services }: { services: Service[] }) {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error ?? "Error al guardar servicio");
+        toast.error(err.error ?? `Error al guardar ${L.item.singular.toLowerCase()}`);
         return;
       }
 
-      toast.success(`${L.item.singular} ${editingId ? "actualizado" : "creado"}`);
+      toast.success(editingId ? "Registro actualizado" : "Registro creado");
       setDialogOpen(false);
       resetForm();
       router.refresh();
@@ -127,7 +127,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`¿Eliminar el servicio "${name}"? Las citas pasadas conservarán el costo original.`)) return;
+    if (!confirm(`¿Eliminar "${name}"? Las citas pasadas conservarán el costo original.`)) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/services/${id}`, { method: "DELETE" });
@@ -136,7 +136,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         toast.error(err.error ?? "Error al eliminar");
         return;
       }
-      toast.success(`${L.item.singular} eliminado`);
+      toast.success("Registro eliminado");
       router.refresh();
     } catch {
       toast.error("Error de red");
@@ -150,7 +150,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Catálogo de {L.item.plural}</h1>
-          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Gestión de tratamientos, costos y colores</p>
+          <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Gestión de {L.item.plural.toLowerCase()}, costos y colores</p>
         </div>
         <Button
           size="sm"
@@ -158,7 +158,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
           className="h-10 gap-2 bg-[var(--brand-accent)] text-white hover:opacity-90 shrink-0 font-black text-[10px] uppercase tracking-widest px-6 rounded-xl shadow-lg shadow-blue-500/20"
         >
           <Plus className="w-4 h-4 text-white" />
-          <span className="hidden sm:inline">Nuevo servicio</span>
+          <span className="hidden sm:inline">Agregar {L.item.singular.toLowerCase()}</span>
         </Button>
       </div>
 
@@ -167,7 +167,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar servicios por nombre o descripción..."
+          placeholder={`Buscar ${L.item.plural.toLowerCase()} por nombre o descripción...`}
           className="pl-11 h-12 text-sm w-full bg-[var(--bg-input)] border-[var(--border-default)] rounded-2xl shadow-sm focus:ring-[var(--brand-accent)] text-[var(--text-primary)] transition-all"
         />
       </div>
@@ -176,7 +176,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         {filtered.length === 0 ? (
           <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] py-24 text-center shadow-sm transition-all">
             <p className="text-sm text-[var(--text-secondary)] font-black uppercase tracking-widest opacity-40">
-              {services.length === 0 ? "Aún no tienes servicios configurados" : "Sin resultados para tu búsqueda"}
+              {services.length === 0 ? `Aún no tienes ${L.item.plural.toLowerCase()} configurados` : "Sin resultados para tu búsqueda"}
             </p>
           </div>
         ) : (
@@ -247,7 +247,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
 
       <div className="px-4">
         <p className="text-[9px] font-medium text-[var(--text-muted)] lowercase italic transition-colors">
-          {filtered.length} {filtered.length === 1 ? "servicio disponible" : "servicios disponibles"}
+          {filtered.length} {filtered.length === 1 ? `${L.item.singular.toLowerCase()} disponible` : `${L.item.plural.toLowerCase()} disponibles`}
         </p>
       </div>
 
@@ -255,12 +255,12 @@ export function ServicesClient({ services }: { services: Service[] }) {
         <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">
-              {editingId ? `Actualizar ${L.item.singular}` : `Nuevo ${L.item.singular}`}
+              {editingId ? `Actualizar ${L.item.singular}` : `Agregar ${L.item.singular}`}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Nombre del servicio</Label>
+              <Label className="text-[10px] font-black text-[var(--text-secondary)] uppercase tracking-widest transition-colors">Nombre de {L.item.singular.toLowerCase()}</Label>
               <Input
                 value={values.name}
                 onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}

@@ -58,5 +58,22 @@ Un solo dueno por archivo; el maestro hizo toda la fase (ver D-11).
 | 3-8 | Pruebas: vitest (17 nuevas) y Playwright UI-01, UI-02 y otras (12) | `tests/agents/agent-settings.test.ts`, `e2e/`, `playwright.config.ts` | integrado |
 | 3-9 | Revision de seguridad | `docs/v2/revision-seguridad-fase3.md` | integrada (riesgos abiertos R-01 a R-04) |
 
-## Fase 4 (siguiente)
-Modulos e industria dinamicos. No iniciada: se espera la confirmacion del dueno.
+## Riesgos de la Fase 3 - cerrados antes de la Fase 4
+- R-01 (solo admin aprueba criticas) y R-02 (JSON obligatorio y Origin) cerrados, D-12. R-03 y R-04 aceptados.
+
+## Fase 4 - Estado (cerrada)
+Un solo dueno por archivo; el maestro hizo toda la fase (modulos con contrato compartido, ver D-13).
+
+| Id | Tarea | Archivos | Estado |
+|---|---|---|---|
+| 4-1 | Paquetes de industria y configuracion de tenant | `lib/industry/{packs,nav,server}.ts` | integrado |
+| 4-2 | Zona horaria por organizacion en horario laboral y disponibilidad | `lib/industry/time.ts`, `lib/agents/tools/{shared,booking_tools}.ts` | integrado |
+| 4-3 | Menu dinamico, etiquetas por vertical y aviso de modulo inactivo | `components/crm/{Sidebar,TenantProvider,ModuleGate,Header}.tsx`, clientes de pagina, `app/(dashboard)/layout.tsx` | integrado |
+| 4-4 | Contexto de industria en prompts y LLM de demo | `lib/agents/{orchestrator,demoLlm}.ts` | integrado |
+| 4-5 | API de esquema y cambio de industria | `app/api/organization/schema/route.ts` | integrado |
+| 4-6 | Selector de vertical (demo) y datos de ejemplo por giro | `components/crm/IndustrySwitcher.tsx`, `lib/demo/verticals.ts`, `lib/demo/engine/db.ts`, `lib/demo/seed.ts` | integrado |
+| 4-7 | Pruebas IND-01 e IND-02 (vitest y Playwright) | `tests/industry/*`, `e2e/industry.spec.ts` | integrado |
+| 4-8 | Revision de seguridad | `docs/v2/revision-seguridad-fase4.md` | integrada |
+
+## Fase 5 (siguiente)
+Pipeline de ventas (Kanban en `/pipeline`) y Agente Analista. No iniciada: se espera la confirmacion del dueno.

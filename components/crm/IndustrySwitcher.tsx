@@ -44,7 +44,7 @@ export function IndustrySwitcher() {
 
   return (
     <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-      <Building2 className="h-4 w-4 shrink-0" aria-hidden />
+      <Building2 className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden />
       <span className="sr-only">Vertical de la demo</span>
       <select
         data-testid="industry-switcher"
@@ -52,7 +52,7 @@ export function IndustrySwitcher() {
         value={schema.industry}
         disabled={busy}
         onChange={(e) => void change(e.target.value)}
-        className="h-10 max-w-[10.5rem] rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-2 text-xs font-bold text-[var(--text-primary)] disabled:opacity-50"
+        className="h-10 max-w-[6.75rem] sm:max-w-[10.5rem] rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-2 text-xs font-bold text-[var(--text-primary)] disabled:opacity-50"
       >
         {schema.industries.map((i) => (
           <option key={i.id} value={i.id}>

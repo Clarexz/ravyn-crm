@@ -42,3 +42,10 @@ Herramienta: Playwright (`@playwright/test`) contra el servidor de produccion lo
 - Pruebas de logica de la fase (vitest): `tests/agents/agent-settings.test.ts` (configuracion por
   agente, interceptor, orquestador, rutas de settings, conteo, diff y actividades).
 - `e2e/roles.spec.ts`: R-01 en la UI. El staff se simula con la cookie `ravyn_demo_role=staff` (solo en modo demo; ver D-12).
+
+## Fase 4 (industria dinamica)
+
+- `tests/industry/time-packs.test.ts`: zona horaria (Intl), horario laboral y slots en hora local, paquetes de industria, menu por vertical (IND-01 de logica) y contexto de industria (incluye neutralizacion de saltos de linea).
+- `tests/industry/vertical-switch.test.ts`: IND-01 por ruta (`GET/PATCH /api/organization/schema` sobre una base de demo real): menu y etiquetas por giro, datos de ejemplo coherentes, aislamiento entre las dos organizaciones, restauracion al volver, admin/staff, CSRF.
+- `tests/industry/agent-context.test.ts`: IND-02 (el contexto llega al prompt del especialista, solo a la organizacion correcta, y el agente cambia de vocabulario) y herramientas con zona horaria.
+- `e2e/industry.spec.ts`: IND-01 e IND-02 en la UI (selector de vertical, menu, titulos, aviso de modulo inactivo, chat) y movil. Siempre deja la organizacion en salud al terminar. Capturas opcionales: `E2E_SHOTS=/ruta npx playwright test`.

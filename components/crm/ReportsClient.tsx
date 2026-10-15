@@ -158,7 +158,7 @@ export default function ReportsClient({ appointments, patients }: ReportsClientP
     <div className="space-y-10 pb-10">
       <div>
         <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Análisis y reportes</h1>
-        <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Monitoreo de métricas clave de la clínica</p>
+        <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Monitoreo de métricas clave de la organización</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -274,7 +274,7 @@ export default function ReportsClient({ appointments, patients }: ReportsClientP
         <Card className="bg-[var(--bg-card)] border border-[var(--border-default)] shadow-sm rounded-[32px] p-8 lg:col-span-2 transition-all">
           <CardHeader className="p-0 mb-8">
             <CardTitle className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight transition-colors">Distribución de estatus</CardTitle>
-            <CardDescription className="text-xs text-[var(--text-secondary)] font-medium mt-1 transition-colors">Eficiencia operativa de la clínica</CardDescription>
+            <CardDescription className="text-xs text-[var(--text-secondary)] font-medium mt-1 transition-colors">Eficiencia operativa de la organización</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px] p-0 flex flex-col md:flex-row items-center justify-around">
             <div className="w-full h-full max-w-[350px]">

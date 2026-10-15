@@ -68,6 +68,8 @@ describe("IND-01: cambiar la industria altera menu, etiquetas y datos", () => {
     const pack = packFor(industry);
     expect(rowsOf("contacts", DEMO_ORG_ID).length).toBeGreaterThanOrEqual(8);
     expect(rowsOf("items", DEMO_ORG_ID).length).toBeGreaterThanOrEqual(5);
+    // El modulo de catalogo (/services y /api/services) solo gestiona items de tipo service.
+    expect(new Set(rowsOf("items", DEMO_ORG_ID).map((i) => i.type))).toEqual(new Set(["service"]));
     expect(rowsOf("opportunities", DEMO_ORG_ID).length).toBeGreaterThanOrEqual(4);
     const bookings = rowsOf("bookings", DEMO_ORG_ID);
     expect(bookings.length).toBeGreaterThanOrEqual(12);

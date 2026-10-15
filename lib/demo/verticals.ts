@@ -80,12 +80,12 @@ const SAMPLES: Partial<Record<IndustryType, VerticalSample>> = {
       { name: "Emilio Carrasco Luna", email: "emilio.carrasco@correo-demo.mx", source: "whatsapp", tags: [] },
     ],
     items: [
-      { name: "Depto 2 rec. Roma Norte (renta)", type: "product", description: "78 m2, 1 estacionamiento, mascotas permitidas. Renta mensual.", price: 19500, color: "#0ea5e9", minutes: 45 },
-      { name: "Casa 3 rec. Coyoacan (venta)", type: "product", description: "180 m2 de construccion, jardin, 2 estacionamientos.", price: 6850000, color: "#10b981", minutes: 45 },
-      { name: "Depto 1 rec. Del Valle (venta)", type: "product", description: "55 m2, balcon, amenidades con gimnasio.", price: 2450000, color: "#f59e0b", minutes: 45 },
-      { name: "Local comercial Polanco (renta)", type: "product", description: "95 m2 a pie de calle. Renta mensual.", price: 62000, color: "#8b5cf6", minutes: 45 },
-      { name: "Oficina 120 m2 Santa Fe (renta)", type: "product", description: "Piso completo, 6 cajones. Renta mensual.", price: 78000, color: "#ef4444", minutes: 45 },
-      { name: "Terreno 300 m2 Tecamachalco (venta)", type: "product", description: "Uso de suelo habitacional, esquina.", price: 4200000, color: "#ec4899", minutes: 45 },
+      { name: "Depto 2 rec. Roma Norte (renta)", type: "service", description: "78 m2, 1 estacionamiento, mascotas permitidas. Renta mensual.", price: 19500, color: "#0ea5e9", minutes: 45 },
+      { name: "Casa 3 rec. Coyoacan (venta)", type: "service", description: "180 m2 de construccion, jardin, 2 estacionamientos.", price: 6850000, color: "#10b981", minutes: 45 },
+      { name: "Depto 1 rec. Del Valle (venta)", type: "service", description: "55 m2, balcon, amenidades con gimnasio.", price: 2450000, color: "#f59e0b", minutes: 45 },
+      { name: "Local comercial Polanco (renta)", type: "service", description: "95 m2 a pie de calle. Renta mensual.", price: 62000, color: "#8b5cf6", minutes: 45 },
+      { name: "Oficina 120 m2 Santa Fe (renta)", type: "service", description: "Piso completo, 6 cajones. Renta mensual.", price: 78000, color: "#ef4444", minutes: 45 },
+      { name: "Terreno 300 m2 Tecamachalco (venta)", type: "service", description: "Uso de suelo habitacional, esquina.", price: 4200000, color: "#ec4899", minutes: 45 },
     ],
     bookingNotes: ["Llega con su pareja.", null, "Quiere ver tambien las areas comunes.", null, "Pide confirmar por WhatsApp un dia antes.", null],
     opportunities: [

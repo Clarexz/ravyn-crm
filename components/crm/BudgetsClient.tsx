@@ -51,7 +51,7 @@ export function BudgetsClient({ budgets: initialBudgets }: BudgetsClientProps) {
       if (!res.ok) throw new Error("Error al eliminar");
       
       setBudgets(prev => prev.filter(b => b.id !== id));
-      toast.success(`${L.budget.singular} eliminado`);
+      toast.success("Registro eliminado");
       router.refresh();
     } catch {
       toast.error("No se pudo eliminar el presupuesto");

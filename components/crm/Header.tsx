@@ -18,7 +18,7 @@ export function Header() {
   const bookingsActive = tenant.activeModules.includes("bookings");
 
   return (
-    <header className="h-20 flex items-center px-8 md:px-10 shrink-0">
+    <header className="h-20 flex items-center px-4 sm:px-8 md:px-10 shrink-0">
       {/* Left space for mobile burger (reserved) */}
       <div className="w-10 md:hidden shrink-0" />
 
@@ -26,7 +26,7 @@ export function Header() {
       <div className="flex-1" />
 
       {/* Right Actions */}
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <IndustrySwitcher />
         <PendingBell />
         <ThemeToggle />
