@@ -16,5 +16,5 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   if (out.status !== 200) return NextResponse.json(out.body, { status: out.status });
   const action = out.body.action as Parameters<typeof buildActionDiff>[2];
   const diff = await buildActionDiff(ctx.db, ctx.organizationId, action);
-  return NextResponse.json({ ...out.body, diff });
+  return NextResponse.json({ ...out.body, diff, is_admin: ctx.profile?.role === "admin" });
 }

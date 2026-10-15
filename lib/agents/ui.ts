@@ -65,3 +65,7 @@ export const AGENTS_CHANGED_EVENT = "ravyn:agents-changed";
 export function notifyAgentsChanged(): void {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(AGENTS_CHANGED_EVENT));
 }
+
+// R-01: mensaje que explica por que un staff no puede aprobar una accion critica.
+export const CRITICAL_ADMIN_ONLY_HINT = "Solo un administrador puede aprobar acciones criticas";
+export const canApprove = (isAdmin: boolean, critical: boolean | undefined): boolean => isAdmin || !critical;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AUTONOMY_LEVELS, loadOrgAgentConfig, saveOrgAgentConfig } from "@/lib/agents/settings";
 import { SPECIALIST_NAMES } from "@/lib/agents/prompts";
+import { guardMutation } from "@/lib/http/requestGuard";
 import { getClinicContext } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,8 @@ const bodySchema = z
 
 // Solo un administrador puede cambiar la configuracion de los agentes.
 export async function PATCH(request: NextRequest) {
+  const blocked = guardMutation(request);
+  if (blocked) return blocked;
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   if (ctx.profile.role !== "admin") {

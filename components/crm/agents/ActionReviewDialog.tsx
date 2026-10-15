@@ -5,7 +5,7 @@ import { Check, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { reviewAction } from "@/components/crm/agents/usePendingActions";
-import { agentMeta, payloadOf, STATUS_LABELS, type ActionDiff, type ActionView } from "@/lib/agents/ui";
+import { agentMeta, canApprove, CRITICAL_ADMIN_ONLY_HINT, payloadOf, STATUS_LABELS, type ActionDiff, type ActionView } from "@/lib/agents/ui";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -25,6 +25,7 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const id = action?.id ?? null;
   const p = useMemo(() => (action ? payloadOf(action) : null), [action]);
@@ -38,7 +39,11 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
     let cancelled = false;
     fetch(`/api/agents/actions/${id}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http"))))
-      .then((body: { diff: ActionDiff }) => !cancelled && setDiff(body.diff))
+      .then((body: { diff: ActionDiff; is_admin?: boolean }) => {
+        if (cancelled) return;
+        setDiff(body.diff);
+        setIsAdmin(body.is_admin === true);
+      })
       .catch(() => !cancelled && setDiffFailed(true));
     return () => {
       cancelled = true;
@@ -53,6 +58,7 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
   if (!action || !p) return null;
   const meta = agentMeta(action.agent_name);
   const pending = action.status === "pending";
+  const mayApprove = canApprove(isAdmin, p.critical);
 
   // Solo se reenvian los campos escalares que cambiaron; el resto del input se conserva tal cual.
   const modifiedInput = (): Record<string, unknown> | undefined => {
@@ -210,11 +216,17 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
                 className="mt-1 w-full resize-none rounded-xl border border-[var(--border-default)] bg-transparent px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-accent)]"
               />
             </label>
+            {!mayApprove && (
+              <p data-testid="admin-only-hint" className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+                {CRITICAL_ADMIN_ONLY_HINT}. Puedes rechazarla.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 data-testid="approve-button"
-                disabled={busy}
+                disabled={busy || !mayApprove}
+                title={mayApprove ? undefined : CRITICAL_ADMIN_ONLY_HINT}
                 onClick={() => submit("approve")}
                 className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--brand-accent)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
@@ -223,7 +235,7 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
               <button
                 type="button"
                 data-testid="modify-button"
-                disabled={busy || Object.keys(draft).length === 0}
+                disabled={busy || !mayApprove || Object.keys(draft).length === 0}
                 aria-pressed={editing}
                 onClick={() => setEditing((v) => !v)}
                 className={cn(

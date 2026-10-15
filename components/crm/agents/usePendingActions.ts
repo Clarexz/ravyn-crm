@@ -10,15 +10,17 @@ export function usePendingActions() {
   const [actions, setActions] = useState<ActionView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const alive = useRef(true);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/agents/actions?status=pending&limit=100", { cache: "no-store" });
       if (!res.ok) throw new Error("http");
-      const body = (await res.json()) as { actions: ActionView[] };
+      const body = (await res.json()) as { actions: ActionView[]; is_admin?: boolean };
       if (alive.current) {
         setActions(body.actions);
+        setIsAdmin(body.is_admin === true);
         setError(false);
       }
     } catch {
@@ -44,7 +46,7 @@ export function usePendingActions() {
     };
   }, [refresh]);
 
-  return { actions, count: actions.length, loading, error, refresh };
+  return { actions, count: actions.length, loading, error, isAdmin, refresh };
 }
 
 export type ReviewResult = { ok: true; executed: boolean } | { ok: false; status: number; message: string };

@@ -174,7 +174,7 @@ describe("aprobar y rechazar (nucleo)", () => {
     if (!res.ok) throw new Error("no se pudo proponer");
     return (res.data as { action_id: string }).action_id;
   }
-  const base = (id: string, org = ORG_A) => ({ db: fake.asClient(), organizationId: org, userId: USER, actionId: id });
+  const base = (id: string, org = ORG_A) => ({ db: fake.asClient(), organizationId: org, userId: USER, actionId: id, isAdmin: true });
 
   it("HITL-02: aprobar ejecuta una sola vez y refleja el efecto", async () => {
     const id = await propose();

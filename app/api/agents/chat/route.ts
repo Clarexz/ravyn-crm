@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { handleMessage } from "@/lib/agents/orchestrator";
 import { LlmConfigError, createLlmClient, type LlmClient } from "@/lib/agents/llm";
+import { guardMutation } from "@/lib/http/requestGuard";
 import { getClinicContext } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const blocked = guardMutation(request);
+  if (blocked) return blocked;
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 

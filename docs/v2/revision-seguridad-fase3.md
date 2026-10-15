@@ -12,8 +12,13 @@ Revisor: el agente maestro (sin subagente independiente; ver D-11). Modo demo ac
 - Carreras: aprobar dos veces o aprobar y rechazar a la vez sigue siendo atomico (409 para el perdedor); la UI lo informa y refresca.
 
 ## Riesgos abiertos (para el paso a datos reales)
-1. R-01 Rol para revisar: `approve`/`reject` solo exigen sesion valida; cualquier usuario de la organizacion (incluido `staff`) puede aprobar acciones, incluidas las criticas. El plan dice "valida permisos del usuario" sin definir el rol. Decision del dueno: exigir `admin` (o un permiso especifico) para las criticas.
-2. R-02 CSRF en modo real: las rutas POST/PATCH no exigen `Content-Type: application/json` (la ruta de revision lee el cuerpo como texto). Con cookies de Supabase `SameSite=Lax` el riesgo es bajo, pero conviene exigir el tipo de contenido y verificar `Origin` al pasar a datos reales.
-3. R-03 Configuracion concurrente: dos administradores guardando a la vez hacen lectura-mezcla-escritura de `organizations.settings` sin control de version; gana la ultima escritura. Aceptable en demo.
-4. R-04 Sin limite de peticiones en `/api/agents/chat` ni en el sondeo (10 s por pestana). Con LLM real hay costo por mensaje: agregar limites por organizacion antes de abrirlo.
+1. R-01 [CERRADO, D-12] Rol para revisar: `approve`/`reject` solo exigen sesion valida; cualquier usuario de la organizacion (incluido `staff`) puede aprobar acciones, incluidas las criticas. El plan dice "valida permisos del usuario" sin definir el rol. Decision del dueno: exigir `admin` (o un permiso especifico) para las criticas.
+2. R-02 [CERRADO, D-12] CSRF en modo real: las rutas POST/PATCH no exigen `Content-Type: application/json` (la ruta de revision lee el cuerpo como texto). Con cookies de Supabase `SameSite=Lax` el riesgo es bajo, pero conviene exigir el tipo de contenido y verificar `Origin` al pasar a datos reales.
+3. R-03 [ACEPTADO por el dueno] Configuracion concurrente: dos administradores guardando a la vez hacen lectura-mezcla-escritura de `organizations.settings` sin control de version; gana la ultima escritura. Aceptable en demo.
+4. R-04 [ACEPTADO por el dueno por ahora, es una demo; sin implementar] Sin limite de peticiones en `/api/agents/chat` ni en el sondeo (10 s por pestana). Con LLM real hay costo por mensaje: agregar limites por organizacion antes de abrirlo.
 5. Siguen vigentes los pendientes de `revision-seguridad-fase0b.md` (H-02, RLS de `users`, migraciones 006 y 007) para el paso a datos reales.
+
+## Estado de los riesgos (tras la decision del dueno)
+- R-01 cerrado: `approveAction` devuelve 403 (`ADMIN_REQUIRED`) si la accion es critica (marca guardada o recalculada sobre los valores finales) y el revisor no es `admin`; la accion sigue pendiente. Rechazar y aprobar no criticas siguen abiertos a cualquier usuario de la organizacion. La UI deshabilita Aprobar con la explicacion.
+- R-02 cerrado: `lib/http/requestGuard.ts` exige `application/json` (415) y, si hay `Origin`, que coincida con el host (403); aplicado a chat, approve, reject y PATCH settings. Sin `Origin` se permite (curl y pruebas). No hay mas rutas mutantes nuevas en la fase.
+- R-03 y R-04 aceptados; se retoman al pasar a datos reales.

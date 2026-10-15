@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cookies } from "next/headers";
 import { isDemoMode, DEMO_USER_ID } from "@/lib/demo/config";
+import { DEMO_STAFF_IDS } from "@/lib/demo/seed";
 
 type ClinicProfile = {
   id: string;
@@ -34,7 +36,13 @@ export async function getClinicContext(): Promise<ClinicContext | null> {
 
   if (isDemoMode()) {
     // Demo mode: fixed admin user of the demo organization, no session needed.
+    // La cookie ravyn_demo_role=staff (solo en demo) simula a un usuario staff para probar permisos (D-12).
     userId = DEMO_USER_ID;
+    try {
+      if (cookies().get("ravyn_demo_role")?.value === "staff") userId = DEMO_STAFF_IDS.reception;
+    } catch {
+      // fuera de un contexto de peticion (pruebas): se queda el administrador
+    }
   } else {
     supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -25,7 +25,7 @@ const setSettings = (org: string, settings: Record<string, unknown>) => {
   row.settings = { ...(row.settings as object), ...settings };
 };
 const ctxOf = (org = ORG_A) => ({ organizationId: org, db: fake.asClient(), now: NOW });
-const patch = (body: unknown) => settingsPatch(new NextRequest("http://localhost/api/agents/settings", { method: "PATCH", body: JSON.stringify(body) }));
+const patch = (body: unknown) => settingsPatch(new NextRequest("http://localhost/api/agents/settings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
 const get = (url: string) => new NextRequest(`http://localhost${url}`);
 const note = { contact_id: IDS.contactA1, note: "Prefiere WhatsApp" };
 

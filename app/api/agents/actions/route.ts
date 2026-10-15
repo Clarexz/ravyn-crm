@@ -26,5 +26,5 @@ export async function GET(request: NextRequest) {
     requiresApproval: approval === null ? undefined : approval === "true",
     limit,
   });
-  return NextResponse.json(out.body, { status: out.status });
+  return NextResponse.json({ ...out.body, is_admin: ctx.profile?.role === "admin" }, { status: out.status });
 }

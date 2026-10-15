@@ -5,12 +5,12 @@ import Link from "next/link";
 import { Bell, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { reviewAction, usePendingActions } from "@/components/crm/agents/usePendingActions";
-import { agentMeta, payloadOf } from "@/lib/agents/ui";
+import { agentMeta, canApprove, CRITICAL_ADMIN_ONLY_HINT, payloadOf } from "@/lib/agents/ui";
 import { cn } from "@/lib/utils";
 
 // Campana del encabezado: contador de pendientes y aprobacion rapida (campana -> Aprobar = 2 clics).
 export function PendingBell() {
-  const { actions, count, error } = usePendingActions();
+  const { actions, count, error, isAdmin } = usePendingActions();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -77,6 +77,7 @@ export function PendingBell() {
             {actions.slice(0, 5).map((a) => {
               const p = payloadOf(a);
               const meta = agentMeta(a.agent_name);
+              const allowed = canApprove(isAdmin, p.critical);
               return (
                 <li key={a.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3">
                   <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
@@ -88,7 +89,9 @@ export function PendingBell() {
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      disabled={busy === a.id}
+                      data-testid="bell-approve"
+                      disabled={busy === a.id || !allowed}
+                      title={allowed ? undefined : CRITICAL_ADMIN_ONLY_HINT}
                       onClick={() => review(a.id, "approve")}
                       className={cn("flex flex-1 items-center justify-center gap-1 rounded-xl bg-[var(--brand-accent)] py-1.5 text-[11px] font-bold text-white disabled:opacity-50")}
                     >
@@ -103,6 +106,7 @@ export function PendingBell() {
                       <X className="h-3 w-3" /> Rechazar
                     </button>
                   </div>
+                  {!allowed && <p data-testid="admin-only-hint" className="mt-1.5 text-[11px] text-[var(--text-secondary)]">{CRITICAL_ADMIN_ONLY_HINT}</p>}
                 </li>
               );
             })}

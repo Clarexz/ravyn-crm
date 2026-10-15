@@ -41,3 +41,4 @@ Herramienta: Playwright (`@playwright/test`) contra el servidor de produccion lo
   (habilitar/deshabilitar y autonomia por agente), insignias de autor y ausencia de desborde en movil.
 - Pruebas de logica de la fase (vitest): `tests/agents/agent-settings.test.ts` (configuracion por
   agente, interceptor, orquestador, rutas de settings, conteo, diff y actividades).
+- `e2e/roles.spec.ts`: R-01 en la UI. El staff se simula con la cookie `ravyn_demo_role=staff` (solo en modo demo; ver D-12).

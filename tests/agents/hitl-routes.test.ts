@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const session = vi.hoisted(() => ({ current: null as null | { db: SupabaseClient; organizationId: string; user: { id: string } } }));
+const session = vi.hoisted(() => ({ current: null as null | { db: SupabaseClient; organizationId: string; user: { id: string }; profile: { role: "admin" | "staff" } } }));
 vi.mock("@/lib/supabase/auth", () => ({ getClinicContext: async () => session.current }));
 
 import { GET as listRoute } from "@/app/api/agents/actions/route";
@@ -15,11 +15,16 @@ const USER_A = uid(901);
 const USER_B = uid(902);
 let fake: FakeDb;
 
-const login = (org: string, userId: string) => {
-  session.current = { db: fake.asClient(), organizationId: org, user: { id: userId } };
+const login = (org: string, userId: string, role: "admin" | "staff" = "admin") => {
+  session.current = { db: fake.asClient(), organizationId: org, user: { id: userId }, profile: { role } };
 };
-const post = (url: string, body?: unknown) =>
-  new NextRequest(`http://localhost${url}`, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+// Como la UI: siempre JSON; sin cuerpo se envia {}.
+const post = (url: string, body: unknown = {}, headers: Record<string, string> = {}) =>
+  new NextRequest(`http://localhost${url}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
 const idParams = (id: string) => ({ params: { id } });
 const approve = (id: string, body?: unknown) => approveRoute(post(`/api/agents/actions/${id}/approve`, body), idParams(id));
 const reject = (id: string, body?: unknown) => rejectRoute(post(`/api/agents/actions/${id}/reject`, body), idParams(id));
@@ -108,7 +113,7 @@ describe("HITL-02 por ruta", () => {
   it("cuerpo invalido: 400; id no uuid: 404", async () => {
     const id = await propose();
     const res = await approveRoute(
-      new NextRequest("http://localhost/x", { method: "POST", body: "{no json" }),
+      new NextRequest("http://localhost/x", { method: "POST", headers: { "content-type": "application/json" }, body: "{no json" }),
       idParams(id),
     );
     expect(res.status).toBe(400);
@@ -161,5 +166,117 @@ describe("GET /api/agents/actions", () => {
     expect((await list("?status=otro")).status).toBe(400);
     expect((await list("?limit=0")).status).toBe(400);
     expect((await (await list("?limit=1")).json()).actions).toHaveLength(1);
+  });
+});
+
+// --- R-01: rol para aprobar acciones criticas ---
+async function proposeNonCritical(): Promise<string> {
+  const res = await executeToolGoverned(
+    "sales",
+    "create_opportunity",
+    { contact_id: IDS.contactA1, title: "Limpieza", value: 900 },
+    { organizationId: ORG_A, db: fake.asClient(), now: NOW },
+  );
+  if (!res.ok) throw new Error("no se pudo proponer");
+  return (res.data as { action_id: string }).action_id;
+}
+const statusOf = (id: string) => fake.tables.agent_actions.find((a) => a.id === id)?.status;
+
+describe("R-01: aprobar acciones criticas exige admin", () => {
+  it("staff recibe 403 con mensaje claro y la accion sigue pendiente sin tocar datos", async () => {
+    const id = await propose();
+    login(ORG_A, USER_A, "staff");
+    const before = fake.snapshot();
+    const res = await approve(id);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("Solo un administrador puede aprobar acciones criticas");
+    expect(statusOf(id)).toBe("pending");
+    expect(fake.snapshot()).toEqual(before);
+    expect(opps()).toHaveLength(0);
+  });
+
+  it("staff no puede volver critica una accion modificando valores, pero si aprobar la que sigue no critica", async () => {
+    const id = await proposeNonCritical();
+    login(ORG_A, USER_A, "staff");
+    const bumped = await approve(id, { input: { contact_id: IDS.contactA1, title: "Limpieza", value: 900, discount_percent: 40 } });
+    expect(bumped.status).toBe(403);
+    expect(statusOf(id)).toBe("pending");
+  });
+
+  it("admin aprueba la critica (200)", async () => {
+    const id = await propose();
+    login(ORG_A, USER_A, "admin");
+    expect((await approve(id)).status).toBe(200);
+    expect(statusOf(id)).toBe("executed");
+  });
+
+  it("staff aprueba una accion no critica", async () => {
+    const id = await proposeNonCritical();
+    login(ORG_A, USER_A, "staff");
+    expect((await approve(id)).status).toBe(200);
+    expect(statusOf(id)).toBe("executed");
+  });
+
+  it("staff puede rechazar una critica", async () => {
+    const id = await propose();
+    login(ORG_A, USER_A, "staff");
+    expect((await reject(id, { notes: "no" })).status).toBe(200);
+    expect(statusOf(id)).toBe("rejected");
+  });
+
+  it("otra organizacion no cambia nada, ni siendo admin", async () => {
+    const id = await propose();
+    login(ORG_B, USER_B, "admin");
+    const before = fake.snapshot();
+    expect((await approve(id)).status).toBe(404);
+    expect(fake.snapshot()).toEqual(before);
+  });
+
+  it("la lista y el detalle informan is_admin para la UI", async () => {
+    await propose();
+    login(ORG_A, USER_A, "staff");
+    expect((await (await list("?status=pending")).json()).is_admin).toBe(false);
+    login(ORG_A, USER_A, "admin");
+    expect((await (await list("?status=pending")).json()).is_admin).toBe(true);
+  });
+});
+
+// --- R-02: CSRF ---
+describe("R-02: JSON obligatorio y Origin del mismo host", () => {
+  it("text/plain se rechaza con 415 y no cambia nada", async () => {
+    const id = await propose();
+    const req = new NextRequest(`http://localhost/api/agents/actions/${id}/reject`, {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "{}",
+    });
+    expect((await rejectRoute(req, idParams(id))).status).toBe(415);
+    const noType = new NextRequest(`http://localhost/api/agents/actions/${id}/approve`, { method: "POST" });
+    expect((await approveRoute(noType, idParams(id))).status).toBe(415);
+    expect(statusOf(id)).toBe("pending");
+  });
+
+  it("Origin ajeno se rechaza con 403; el mismo host y sin Origin pasan", async () => {
+    const id = await propose();
+    const evil = post(`/api/agents/actions/${id}/reject`, {}, { origin: "http://evil.example" });
+    expect((await rejectRoute(evil, idParams(id))).status).toBe(403);
+    expect(statusOf(id)).toBe("pending");
+    const same = post(`/api/agents/actions/${id}/reject`, {}, { origin: "http://localhost" });
+    expect((await rejectRoute(same, idParams(id))).status).toBe(200);
+  });
+
+  it("chat y settings aplican la misma guardia", async () => {
+    const { POST: chat } = await import("@/app/api/agents/chat/route");
+    const { PATCH: settings } = await import("@/app/api/agents/settings/route");
+    const plain = (url: string, method: string) =>
+      new NextRequest(`http://localhost${url}`, { method, headers: { "content-type": "text/plain" }, body: "{}" });
+    expect((await chat(plain("/api/agents/chat", "POST"))).status).toBe(415);
+    expect((await settings(plain("/api/agents/settings", "PATCH"))).status).toBe(415);
+    const foreign = new NextRequest("http://localhost/api/agents/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ text: "hola" }),
+    });
+    expect((await chat(foreign)).status).toBe(403);
   });
 });

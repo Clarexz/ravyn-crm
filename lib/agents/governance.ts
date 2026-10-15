@@ -260,8 +260,13 @@ export type ReviewParams = {
   actionId: string;
   notes?: string;
   now?: Date;
+  // Rol del revisor: las acciones criticas solo las aprueba un administrador (R-01).
+  isAdmin?: boolean;
 };
 
+export const CRITICAL_ADMIN_ONLY_MESSAGE = "Solo un administrador puede aprobar acciones criticas";
+
+// R-01: las acciones criticas solo las aprueba un administrador. Rechazar y las no criticas, cualquier usuario.
 export async function approveAction(params: ReviewParams & { input?: unknown }): Promise<GovernanceOutcome> {
   const { db, organizationId, userId, actionId } = params;
   try {
@@ -275,6 +280,12 @@ export async function approveAction(params: ReviewParams & { input?: unknown }):
     if (!prepared.ok) {
       // Valores modificados invalidos (o carga corrupta): la accion sigue pendiente.
       return { status: 400, body: { error: prepared.error.message, code: prepared.error.code } };
+    }
+
+    // La criticidad se evalua sobre lo guardado y sobre los valores finales (un revisor no puede volverla critica a escondidas).
+    const critical = (payload as { critical?: unknown }).critical === true || isCriticalCall(prepared.toolName, prepared.input);
+    if (critical && params.isAdmin !== true) {
+      return { status: 403, body: { error: CRITICAL_ADMIN_ONLY_MESSAGE, code: "ADMIN_REQUIRED" } };
     }
 
     const reviewedAt = (params.now ?? new Date()).toISOString();

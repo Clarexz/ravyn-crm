@@ -47,7 +47,7 @@ describe("demoLlm: flujo completo mensaje -> tool_calls -> pending -> approve", 
       payload: { input: { contact_id: IDS.contactA1, discount_percent: 20, value: 4800 } },
     });
 
-    const approved = await approveAction({ db: fake.asClient(), organizationId: ORG_A, userId: USER, actionId: pending.id as string });
+    const approved = await approveAction({ db: fake.asClient(), organizationId: ORG_A, userId: USER, actionId: pending.id as string, isAdmin: true });
     expect(approved.status).toBe(200);
     expect(fake.tables.opportunities.find((o) => o.title === "Propuesta para Maria Lopez")).toMatchObject({
       contact_id: IDS.contactA1,
@@ -70,7 +70,7 @@ describe("demoLlm: flujo completo mensaje -> tool_calls -> pending -> approve", 
     expect(pending.action_type).toBe("create_booking");
     expect((pending.payload as { input: { scheduled_at: string } }).input.scheduled_at).toBe("2026-10-15T09:00:00.000Z");
     expect(fake.tables.bookings).toHaveLength(3);
-    const res = await approveAction({ db: fake.asClient(), organizationId: ORG_A, userId: USER, actionId: pending.id as string, now: NOW });
+    const res = await approveAction({ db: fake.asClient(), organizationId: ORG_A, userId: USER, actionId: pending.id as string, isAdmin: true, now: NOW });
     expect(res.status).toBe(200);
     expect(fake.tables.bookings).toHaveLength(4);
   });

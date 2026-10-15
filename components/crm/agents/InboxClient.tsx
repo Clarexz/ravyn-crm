@@ -7,7 +7,7 @@ import { Check, Eye, Inbox, X } from "lucide-react";
 import { toast } from "sonner";
 import { ActionReviewDialog } from "@/components/crm/agents/ActionReviewDialog";
 import { reviewAction } from "@/components/crm/agents/usePendingActions";
-import { AGENTS_CHANGED_EVENT, AGENT_META, agentMeta, payloadOf, STATUS_LABELS, type ActionView } from "@/lib/agents/ui";
+import { AGENTS_CHANGED_EVENT, AGENT_META, agentMeta, canApprove, CRITICAL_ADMIN_ONLY_HINT, payloadOf, STATUS_LABELS, type ActionView } from "@/lib/agents/ui";
 import { cn } from "@/lib/utils";
 
 type View = "pending" | "reviewed" | "automatic";
@@ -32,12 +32,14 @@ export function InboxClient() {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<ActionView | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/agents/actions?${queryFor(view)}`, { cache: "no-store" });
       if (!res.ok) throw new Error("http");
-      const body = (await res.json()) as { actions: ActionView[] };
+      const body = (await res.json()) as { actions: ActionView[]; is_admin?: boolean };
+      setIsAdmin(body.is_admin === true);
       setRows(view === "reviewed" ? body.actions.filter((a) => a.status !== "pending") : body.actions);
       setError(false);
     } catch {
@@ -175,7 +177,8 @@ export function InboxClient() {
                     <button
                       type="button"
                       data-testid="quick-approve"
-                      disabled={busy === a.id}
+                      disabled={busy === a.id || !canApprove(isAdmin, p.critical)}
+                      title={canApprove(isAdmin, p.critical) ? undefined : CRITICAL_ADMIN_ONLY_HINT}
                       onClick={() => quick(a, "approve")}
                       className="flex min-h-10 items-center gap-1.5 rounded-xl bg-[var(--brand-accent)] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
                     >
@@ -193,6 +196,9 @@ export function InboxClient() {
                   </>
                 )}
               </div>
+              {a.status === "pending" && !canApprove(isAdmin, p.critical) && (
+                <p data-testid="admin-only-hint" className="mt-2 text-xs text-[var(--text-secondary)]">{CRITICAL_ADMIN_ONLY_HINT}</p>
+              )}
             </li>
           );
         })}

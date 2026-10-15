@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { approveAction, rejectAction, type GovernanceOutcome } from "@/lib/agents/governance";
+import { guardMutation } from "@/lib/http/requestGuard";
 import { getClinicContext } from "@/lib/supabase/auth";
 
 const bodySchema = z
@@ -23,6 +24,8 @@ async function readBody(request: NextRequest): Promise<{ notes?: string; input?:
 }
 
 export async function handleReview(request: NextRequest, id: string, kind: "approve" | "reject"): Promise<NextResponse> {
+  const blocked = guardMutation(request);
+  if (blocked) return blocked;
   const ctx = await getClinicContext();
   if (!ctx) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   if (!z.uuid().safeParse(id).success) return NextResponse.json({ error: "Accion no encontrada" }, { status: 404 });
@@ -32,7 +35,8 @@ export async function handleReview(request: NextRequest, id: string, kind: "appr
 
   // organizationId y userId salen siempre de la sesion.
   const base = { db: ctx.db, organizationId: ctx.organizationId, userId: ctx.user.id, actionId: id, notes: body.notes };
+  const isAdmin = ctx.profile?.role === "admin";
   const out: GovernanceOutcome =
-    kind === "approve" ? await approveAction({ ...base, input: body.input }) : await rejectAction(base);
+    kind === "approve" ? await approveAction({ ...base, input: body.input, isAdmin }) : await rejectAction(base);
   return NextResponse.json(out.body, { status: out.status });
 }
