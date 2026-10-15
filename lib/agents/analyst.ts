@@ -192,8 +192,8 @@ export function buildBriefing(m: AnalystMetrics, labels: Labels): Briefing {
       label: `Primera atención a ${contacts} nuevos`,
       value: fr.new_contacts === 0 ? "sin datos (no hubo registros nuevos)" : fr.avg_hours === null ? `ninguno atendido de ${fr.new_contacts}` : `promedio ${fmtHours(fr.avg_hours)} (${fr.attended} de ${fr.new_contacts} atendidos)`,
     },
-    { key: "opportunity_conversion", label: `Conversión de ${pipe} cerrados`, value: oc.closed === 0 ? "sin datos (ningún cierre)" : `${fmtPct(oc.rate_pct)} (${oc.won} ganados de ${oc.closed} cerrados)` },
-    { key: "quote_conversion", label: `Conversión de ${budgets}`, value: qc.issued === 0 ? "sin datos (ninguna emitida)" : `${fmtPct(qc.rate_pct)} (${qc.accepted} aceptadas de ${qc.issued} emitidas)` },
+    { key: "opportunity_conversion", label: `Conversión de ${pipe} cerrados`, value: oc.closed === 0 ? "sin datos (ningún cierre)" : `${fmtPct(oc.rate_pct)} (ganados: ${oc.won} de ${oc.closed} cierres)` },
+    { key: "quote_conversion", label: `Conversión de ${budgets}`, value: qc.issued === 0 ? "sin datos (ninguna emitida)" : `${fmtPct(qc.rate_pct)} (aceptadas: ${qc.accepted} de ${qc.issued} emitidas)` },
     { key: "no_show", label: `Inasistencias en ${bookings}`, value: ns.no_show + ns.completed === 0 ? "sin datos (ninguna resuelta)" : `${fmtPct(ns.rate_pct)} (${ns.no_show} de ${ns.no_show + ns.completed})` },
     { key: "pipeline_value", label: `Valor del embudo (${pipe})`, value: `${fmtMoney(m.pipeline.open_value)} en ${m.pipeline.open_count} abiertos` },
     { key: "won", label: `Ganado en el periodo`, value: `${fmtMoney(m.pipeline.won_in_period.value)} (${m.pipeline.won_in_period.count} cierres)` },
@@ -213,7 +213,7 @@ export function buildBriefing(m: AnalystMetrics, labels: Labels): Briefing {
     alerts.push({ kind: "pending_approvals", severity: "high", text: `${times(m.pending_approvals, "acción de agente espera", "acciones de agentes esperan")} aprobación.`, href: "/agents/inbox" });
   }
   if (fr.unattended > 0) {
-    alerts.push({ kind: "unattended_contacts", severity: "medium", text: `${fr.unattended} de ${fr.new_contacts} ${contacts} nuevos del periodo no tienen ninguna atención registrada.` });
+    alerts.push({ kind: "unattended_contacts", severity: "medium", text: `Sin ninguna atención registrada: ${fr.unattended} de ${fr.new_contacts} ${contacts} nuevos del periodo.` });
   }
   if (ns.rate_pct !== null && ns.rate_pct >= NO_SHOW_ALERT_PCT) {
     alerts.push({ kind: "high_no_show", severity: "medium", text: `Las inasistencias en ${bookings} son ${fmtPct(ns.rate_pct)} (${ns.no_show} de ${ns.no_show + ns.completed}), por encima del umbral de ${NO_SHOW_ALERT_PCT}%.` });
@@ -230,7 +230,7 @@ export function buildBriefing(m: AnalystMetrics, labels: Labels): Briefing {
   }
   if (m.stale.count > actions.length) actions.push({ text: `Revisar en el tablero los ${m.stale.count - actions.length} ${pipe} restantes sin actividad.`, href: "/pipeline" });
   if (m.pending_approvals > 0) actions.push({ text: `Revisar ${times(m.pending_approvals, "acción pendiente", "acciones pendientes")} en la bandeja de aprobaciones.`, href: "/agents/inbox" });
-  if (fr.unattended > 0) actions.push({ text: `Dar primera atención a ${fr.unattended} ${contacts} nuevos sin contacto registrado.` });
+  if (fr.unattended > 0) actions.push({ text: `Dar primera atención a ${fr.unattended} de los ${contacts} nuevos que no tienen contacto registrado.` });
   if (ns.rate_pct !== null && ns.rate_pct >= NO_SHOW_ALERT_PCT) actions.push({ text: `Reforzar recordatorios y confirmaciones de ${bookings} para reducir inasistencias.` });
   if (actions.length === 0) actions.push({ text: "Sin acciones urgentes: no hay alertas con los datos del periodo." });
 

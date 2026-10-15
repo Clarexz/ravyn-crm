@@ -48,7 +48,7 @@ export const findStaleOpportunities: ToolDefinition<z.infer<typeof staleInput>> 
         const lastAt = last.get(o.id) ?? Date.parse(o.created_at);
         return { ...o, last_activity_at: new Date(lastAt).toISOString(), lastAt };
       })
-      .filter((o) => o.lastAt < cutoff.getTime())
+      .filter((o) => o.lastAt <= cutoff.getTime())
       .sort((a, b) => a.lastAt - b.lastAt)
       .slice(0, input.limit)
       .map(({ lastAt, ...o }) => ({ ...o, days_since_activity: Math.floor((now.getTime() - lastAt) / DAY_MS) }));
