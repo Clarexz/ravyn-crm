@@ -83,11 +83,12 @@ describe("demoLlm: flujo completo mensaje -> tool_calls -> pending -> approve", 
     expect(out.reply).toMatch(/tarea/);
   });
 
-  it("metricas: redacta un resumen con las cifras de la herramienta", async () => {
+  it("metricas: entrega el briefing del Analista con las cifras de la base", async () => {
     const out = await run("Dame el reporte de metricas del mes");
     expect(out.agent).toBe("analyst");
-    expect(out.tools.map((t) => t.name)).toEqual(["get_org_metrics"]);
-    expect(out.reply).toMatch(/2 contactos/);
+    expect(out.tools.map((t) => t.name)).toEqual(["generate_briefing"]);
+    expect(out.reply).toMatch(/Briefing de los últimos 30 días/);
+    expect(out.reply).toMatch(/Acciones recomendadas/);
   });
 
   it("alta de cliente: crea el contacto si no existe y no lo duplica si existe", async () => {

@@ -18,6 +18,7 @@ export const TOOL_NAMES = [
   "set_reminder",
   "find_stale_opportunities",
   "get_org_metrics",
+  "generate_briefing",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -28,7 +29,7 @@ export const AGENT_TOOL_PERMISSIONS: Record<AgentName, readonly ToolName[]> = {
   sales: ["search_contact", "create_opportunity", "update_stage", "calculate_quote", "log_message", "create_task"],
   booking: ["search_contact", "check_availability", "create_booking", "reschedule_booking"],
   follow_up: ["search_contact", "find_stale_opportunities", "create_task", "set_reminder", "log_message"],
-  analyst: ["get_org_metrics", "find_stale_opportunities"],
+  analyst: ["get_org_metrics", "find_stale_opportunities", "generate_briefing"],
 };
 
 export function canUseTool(agent: AgentName, tool: string): boolean {

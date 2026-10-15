@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@/lib/agents/types";
 import { TOOL_NAMES, type ToolName } from "@/lib/agents/permissions";
+import { generateBriefingTool } from "@/lib/agents/analyst";
 import { createTask, logMessage, setReminder } from "./activity_tools";
 import { findStaleOpportunities, getOrgMetrics } from "./analytics_tools";
 import { checkAvailability, createBooking, rescheduleBooking } from "./booking_tools";
@@ -21,6 +22,7 @@ export const TOOL_REGISTRY: Record<ToolName, ToolDefinition> = {
   set_reminder: setReminder as ToolDefinition,
   find_stale_opportunities: findStaleOpportunities as ToolDefinition,
   get_org_metrics: getOrgMetrics as ToolDefinition,
+  generate_briefing: generateBriefingTool as ToolDefinition,
 };
 
 export function isToolName(name: string): name is ToolName {

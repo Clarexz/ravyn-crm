@@ -15,6 +15,7 @@ import {
   Tag,
   Receipt,
   Bot,
+  KanbanSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ const ICONS: Record<string, React.ElementType> = {
   tag: Tag,
   receipt: Receipt,
   chart: BarChart3,
+  kanban: KanbanSquare,
 };
 
 interface SidebarProps {

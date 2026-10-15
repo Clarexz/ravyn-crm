@@ -21,6 +21,7 @@ const AGENT_FOR: Record<ToolName, AgentName> = {
   set_reminder: "follow_up",
   find_stale_opportunities: "follow_up",
   get_org_metrics: "analyst",
+  generate_briefing: "analyst",
 };
 
 let db: FakeDb;
@@ -97,6 +98,7 @@ describe("entrada invalida (cada herramienta)", () => {
     set_reminder: [{}, { title: "T" }, { title: "T", remind_at: "nunca" }],
     find_stale_opportunities: [{ days: 0 }, { days: 366 }, { limit: 51 }, { dias: 3 }],
     get_org_metrics: [{ days: 0 }, { days: 1000 }, { x: 1 }],
+    generate_briefing: [{ days: 0 }, { days: 1000 }, { x: 1 }],
   };
 
   for (const name of TOOL_NAMES) {
@@ -435,6 +437,7 @@ describe("errores capturados", () => {
       ["create_task", { title: "t" }],
       ["find_stale_opportunities", {}],
       ["get_org_metrics", {}],
+      ["generate_briefing", {}],
     ];
     for (const [tool, input] of inputs) {
       const res = await run(tool, input);

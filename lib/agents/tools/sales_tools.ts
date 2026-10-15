@@ -2,8 +2,9 @@ import { z } from "zod";
 import type { ToolDefinition } from "@/lib/agents/types";
 import { check, assertOwned, getOwned, insertActivity, invalid, nowOf, roundMoney, notFound, type Row } from "./shared";
 
-export const OPEN_STAGES = ["lead", "contacted", "qualified", "proposal", "negotiation"] as const;
-export const ALL_STAGES = [...OPEN_STAGES, "won", "lost"] as const;
+import { OPEN_STAGES, STAGES as ALL_STAGES } from "@/lib/pipeline/stages";
+
+export { OPEN_STAGES, ALL_STAGES };
 export const DISCOUNT_APPROVAL_THRESHOLD = 10;
 
 const createInput = z

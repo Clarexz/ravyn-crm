@@ -85,18 +85,18 @@ describe("paquetes de industria", () => {
 
   it("IND-01 (logica): el menu cambia con la industria", () => {
     const nav = (industry: string) => buildNav(resolveTenantConfig({ industry }).modules).map((n) => n.label);
-    expect(nav("health")).toEqual(["Dashboard", "Citas", "Pacientes", "Servicios", "Presupuestos", "Agentes", "Reportes", "Configuración"]);
+    expect(nav("health")).toEqual(["Dashboard", "Citas", "Pacientes", "Servicios", "Presupuestos", "Tratamientos", "Agentes", "Reportes", "Configuración"]);
     const restaurant = nav("restaurant");
     expect(restaurant).toEqual(["Dashboard", "Reservaciones", "Comensales", "Mesas", "Agentes", "Reportes", "Configuración"]);
     expect(restaurant).not.toContain("Presupuestos");
-    expect(nav("real_estate")).toEqual(["Dashboard", "Visitas", "Prospectos", "Propiedades", "Agentes", "Reportes", "Configuración"]);
-    expect(nav("professional_services")).toContain("Cotizaciones");
+    expect(nav("real_estate")).toEqual(["Dashboard", "Visitas", "Prospectos", "Propiedades", "Operaciones", "Agentes", "Reportes", "Configuración"]);
+    expect(nav("professional_services")).toEqual(expect.arrayContaining(["Cotizaciones", "Oportunidades"]));
   });
 
-  it("el esquema lista pipeline activo para inmobiliarias aunque su pantalla llegue en la Fase 5", () => {
+  it("el esquema lista pipeline activo y disponible para inmobiliarias (Fase 5)", () => {
     const cfg = resolveTenantConfig({ industry: "real_estate" });
     const pipeline = cfg.modules.find((m) => m.id === "pipeline");
-    expect(pipeline).toMatchObject({ active: true, available: false });
+    expect(pipeline).toMatchObject({ active: true, available: true });
     expect(cfg.modules.find((m) => m.id === "budgets")?.active).toBe(false);
   });
 

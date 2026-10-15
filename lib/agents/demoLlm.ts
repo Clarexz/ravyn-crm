@@ -249,23 +249,13 @@ function followUpFlow(history: Entry[]): LlmResponse {
 }
 
 function analystFlow(history: Entry[]): LlmResponse {
-  if (history.length === 0) return call(history, "get_org_metrics", { days: 30 });
-  const m = last(history, "get_org_metrics");
-  const s = m ? special(m) : null;
+  if (history.length === 0) return call(history, "generate_briefing", { days: 30 });
+  const b = last(history, "generate_briefing");
+  const s = b ? special(b) : null;
   if (s) return reply(s);
-  const d = (m?.result as { ok: true; data: Row }).data as {
-    period_days: number;
-    contacts: { total: number; new_in_period: number };
-    opportunities: { open_value: number; won_in_period: { count: number; value: number } };
-    bookings: { upcoming: number };
-    tasks: { pending: number };
-  };
-  return reply(
-    `Resumen de los ultimos ${d.period_days} dias: ${d.contacts.total} contactos (${d.contacts.new_in_period} nuevos), ` +
-      `valor abierto en el embudo de ${money(d.opportunities.open_value)}, ` +
-      `${d.opportunities.won_in_period.count} oportunidades ganadas por ${money(d.opportunities.won_in_period.value)}, ` +
-      `${d.bookings.upcoming} citas proximas y ${d.tasks.pending} tareas pendientes.`,
-  );
+  // El texto ya viene redactado de forma determinista por el Analista (cifras de la base): se entrega tal cual.
+  const d = (b?.result as { ok: true; data: Row }).data as { summary?: string };
+  return reply(typeof d.summary === "string" ? d.summary : "No pude generar el briefing.");
 }
 
 function receptionistFlow(text: string, history: Entry[], pack: IndustryPack): LlmResponse {

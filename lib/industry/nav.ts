@@ -17,6 +17,7 @@ export function buildNav(modules: TenantModule[]): NavEntry[] {
     ...of("contacts"),
     ...of("items"),
     ...of("budgets"),
+    ...of("pipeline"),
     fixed("/agents", "Agentes", "bot"),
     ...of("reports"),
     fixed("/settings", "Configuración", "settings"),

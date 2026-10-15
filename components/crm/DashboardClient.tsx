@@ -4,6 +4,7 @@ import { Calendar, CalendarCheck, Clock, UserX, ArrowRight } from "lucide-react"
 import { useLabels } from "@/components/crm/TenantProvider";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, subDays, isWithinInterval, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
+import { BriefingCard } from "@/components/crm/BriefingCard";
 import { KpiCard } from "@/components/crm/KpiCard";
 import { AppointmentStatusBadge } from "@/components/crm/AppointmentStatusBadge";
 import { useState, useEffect } from "react";
@@ -134,6 +135,8 @@ export function DashboardClient({ appointments: initialAppointments, organizatio
         <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Panel de Control</h1>
         <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Resumen operativo y métricas clave</p>
       </div>
+
+      <BriefingCard />
 
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
         <div

@@ -21,7 +21,7 @@ test.describe("Industria dinamica (Fase 4)", () => {
 
   test("IND-01: cambiar la vertical con el selector altera el menu lateral y las etiquetas", async ({ page }) => {
     await page.goto("/dashboard");
-    expect(await menu(page)).toEqual(["Dashboard", "Citas", "Pacientes", "Servicios", "Presupuestos", "Agentes", "Reportes", "Configuración"]);
+    expect(await menu(page)).toEqual(["Dashboard", "Citas", "Pacientes", "Servicios", "Presupuestos", "Tratamientos", "Agentes", "Reportes", "Configuración"]);
     await shot(page, "salud-dashboard");
 
     await page.getByTestId("industry-switcher").selectOption("restaurant");
@@ -49,7 +49,7 @@ test.describe("Industria dinamica (Fase 4)", () => {
     await page.goto("/dashboard");
     await page.getByTestId("industry-switcher").selectOption("real_estate");
     await expect(page.getByRole("link", { name: "Visitas" }).last()).toBeVisible();
-    expect(await menu(page)).toEqual(["Dashboard", "Visitas", "Prospectos", "Propiedades", "Agentes", "Reportes", "Configuración"]);
+    expect(await menu(page)).toEqual(["Dashboard", "Visitas", "Prospectos", "Propiedades", "Operaciones", "Agentes", "Reportes", "Configuración"]);
     await shot(page, "inmobiliaria-dashboard");
     await page.goto("/patients");
     await expect(page.getByRole("heading", { name: "Directorio de Prospectos" })).toBeVisible();

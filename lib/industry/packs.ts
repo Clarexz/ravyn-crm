@@ -7,7 +7,7 @@ import { DEFAULT_TIMEZONE, formatInZone, safeTimeZone } from "@/lib/industry/tim
 export type ModuleId = "contacts" | "bookings" | "items" | "budgets" | "pipeline" | "reports" | "activities";
 
 // Catalogo de modulos. `route` es la ruta del menu; `available` es false mientras la pantalla no exista
-// (pipeline llega en la Fase 5): el modulo figura en el esquema pero el menu no lo muestra.
+// (sin pantalla no se muestra en el menu): el modulo figura en el esquema pero el menu no lo muestra.
 export type ModuleDef = { id: ModuleId; route: string | null; available: boolean; icon: string; labelKey: LabelKey | null; fallbackLabel: string };
 
 export type LabelKey = "contact" | "booking" | "item" | "budget" | "pipeline";
@@ -19,7 +19,7 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   bookings: { id: "bookings", route: "/appointments", available: true, icon: "calendar", labelKey: "booking", fallbackLabel: "Agenda" },
   items: { id: "items", route: "/services", available: true, icon: "tag", labelKey: "item", fallbackLabel: "Catalogo" },
   budgets: { id: "budgets", route: "/budgets", available: true, icon: "receipt", labelKey: "budget", fallbackLabel: "Presupuestos" },
-  pipeline: { id: "pipeline", route: "/pipeline", available: false, icon: "kanban", labelKey: "pipeline", fallbackLabel: "Pipeline de ventas" },
+  pipeline: { id: "pipeline", route: "/pipeline", available: true, icon: "kanban", labelKey: "pipeline", fallbackLabel: "Pipeline de ventas" },
   reports: { id: "reports", route: "/reports", available: true, icon: "chart", labelKey: null, fallbackLabel: "Reportes" },
   activities: { id: "activities", route: null, available: true, icon: "list", labelKey: null, fallbackLabel: "Actividades" },
 };
