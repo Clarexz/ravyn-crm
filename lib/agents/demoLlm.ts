@@ -5,6 +5,7 @@ import type { LlmClient, LlmMessage, LlmRequest, LlmResponse, LlmToolCall } from
 import { classifyByKeywords } from "@/lib/agents/orchestrator";
 import type { SpecialistName } from "@/lib/agents/prompts";
 import type { ToolResult } from "@/lib/agents/types";
+import { packFor, type IndustryPack } from "@/lib/industry/packs";
 
 type Entry = { name: string; input: unknown; result: ToolResult | null };
 type Row = Record<string, unknown>;
@@ -54,7 +55,7 @@ function lastMatch(text: string, prefixes: string): string | null {
 
 export function extractName(text: string): string | null {
   const candidate =
-    lastMatch(text, "para|cliente|paciente|contacto|llamado|llamada") ??
+    lastMatch(text, "para|cliente|paciente|comensal|prospecto|contacto|llamado|llamada") ??
     lastMatch(text, "a|de|con") ??
     firstCapitalizedAfterStart(text);
   if (!candidate) return null;
@@ -89,6 +90,12 @@ function extractAmount(text: string): number | undefined {
   if (!m) return undefined;
   const n = Number(m[1].replace(/,/g, ""));
   return Number.isFinite(n) ? n : undefined;
+}
+
+// Industria inyectada por el orquestador en el prompt ("(industria: real_estate)"); sin ella, vocabulario neutro.
+function packFromSystem(system: string): IndustryPack {
+  const m = /\(industria:\s*([a-z_]+)\)/.exec(system);
+  return packFor(m ? m[1] : "general");
 }
 
 function nowFromSystem(system: string): Date {
@@ -144,28 +151,29 @@ function last(history: Entry[], name: string): Entry | undefined {
   return [...history].reverse().find((e) => e.name === name);
 }
 
-function pickContact(history: Entry[], name: string): { contact?: Row; response?: LlmResponse } {
+function pickContact(history: Entry[], name: string, pack: IndustryPack): { contact?: Row; response?: LlmResponse } {
   const search = last(history, "search_contact");
   const err = search ? special(search) : null;
   if (err) return { response: reply(err) };
   const contacts = contactsOf(search);
   if (contacts.length === 0) {
-    return { response: reply(`No encontre a "${name}" entre los contactos. Puedo darlo de alta si me compartes su telefono o correo.`) };
+    return { response: reply(`No encontre a "${name}" entre los ${pack.labels.contact.plural.toLowerCase()}. Puedo darlo de alta si me compartes su telefono o correo.`) };
   }
   const exact = contacts.filter((c) => normalize(String(c.full_name)) === normalize(name));
   if (contacts.length > 1 && exact.length !== 1) {
     const names = contacts.map((c) => String(c.full_name)).join(", ");
-    return { response: reply(`Encontre varios contactos (${names}). Indica el nombre completo para continuar.`) };
+    return { response: reply(`Encontre varios ${pack.labels.contact.plural.toLowerCase()} (${names}). Indica el nombre completo para continuar.`) };
   }
   return { contact: exact[0] ?? contacts[0] };
 }
 
-const NEED_NAME = "Necesito el nombre del cliente para continuar. Indicalo, por favor.";
 
-function salesFlow(text: string, history: Entry[]): LlmResponse {
+const needName = (pack: IndustryPack): string => `Necesito el nombre del ${pack.labels.contact.singular.toLowerCase()} para continuar. Indicalo, por favor.`;
+
+function salesFlow(text: string, history: Entry[], pack: IndustryPack): LlmResponse {
   const name = extractName(text);
   if (history.length === 0) {
-    return name ? call(history, "search_contact", { query: name, limit: 5 }) : reply(NEED_NAME);
+    return name ? call(history, "search_contact", { query: name, limit: 5 }) : reply(needName(pack));
   }
   const created = last(history, "create_opportunity");
   if (created) {
@@ -174,8 +182,8 @@ function salesFlow(text: string, history: Entry[]): LlmResponse {
     const opp = (created.result as { ok: true; data: { opportunity?: Row } }).data.opportunity ?? {};
     return reply(`Cree la oportunidad "${String(opp.title)}" por ${money(opp.value)}. Ya aparece en tu embudo.`);
   }
-  const { contact, response } = pickContact(history, name ?? "");
-  if (response || !contact) return response ?? reply(NEED_NAME);
+  const { contact, response } = pickContact(history, name ?? "", pack);
+  if (response || !contact) return response ?? reply(needName(pack));
   const pct = extractPercent(text);
   const value = extractAmount(text);
   return call(history, "create_opportunity", {
@@ -187,20 +195,20 @@ function salesFlow(text: string, history: Entry[]): LlmResponse {
   });
 }
 
-function bookingFlow(text: string, history: Entry[], now: Date): LlmResponse {
+function bookingFlow(text: string, history: Entry[], now: Date, pack: IndustryPack): LlmResponse {
   const name = extractName(text);
   if (history.length === 0) {
-    return name ? call(history, "search_contact", { query: name, limit: 5 }) : reply(NEED_NAME);
+    return name ? call(history, "search_contact", { query: name, limit: 5 }) : reply(needName(pack));
   }
   const booked = last(history, "create_booking");
   if (booked) {
     const s = special(booked);
     if (s) return reply(s);
     const b = (booked.result as { ok: true; data: { booking?: Row } }).data.booking ?? {};
-    return reply(`Agende la cita para el ${String(b.scheduled_at)}.`);
+    return reply(`Agende la ${pack.labels.booking.singular.toLowerCase()} para el ${String(b.scheduled_at)}.`);
   }
-  const { contact, response } = pickContact(history, name ?? "");
-  if (response || !contact) return response ?? reply(NEED_NAME);
+  const { contact, response } = pickContact(history, name ?? "", pack);
+  if (response || !contact) return response ?? reply(needName(pack));
   const availability = last(history, "check_availability");
   if (!availability) {
     const date = targetDate(text, now);
@@ -260,15 +268,15 @@ function analystFlow(history: Entry[]): LlmResponse {
   );
 }
 
-function receptionistFlow(text: string, history: Entry[]): LlmResponse {
+function receptionistFlow(text: string, history: Entry[], pack: IndustryPack): LlmResponse {
   const n = normalize(text);
   const wantsCreate = /\b(alta|registr|nuevo cliente|nuevo contacto|dar de alta)/.test(n);
   const name = extractName(text);
   if (!wantsCreate || !name) {
     return reply(
       wantsCreate
-        ? NEED_NAME
-        : "Hola, soy el asistente de recepcion. Puedo buscar o dar de alta contactos y consultar disponibilidad. Que necesitas?",
+        ? needName(pack)
+        : pack.agent.greeting,
     );
   }
   if (history.length === 0) return call(history, "search_contact", { query: name, limit: 5 });
@@ -309,14 +317,15 @@ export class DemoLlmClient implements LlmClient {
     const allowed = new Set((request.tools ?? []).map((t) => t.name));
     const agent = detectAgent(request.system, text);
     const now = nowFromSystem(request.system);
+    const pack = packFromSystem(request.system);
 
     let response: LlmResponse;
     switch (agent) {
       case "sales":
-        response = salesFlow(text, history);
+        response = salesFlow(text, history, pack);
         break;
       case "booking":
-        response = bookingFlow(text, history, now);
+        response = bookingFlow(text, history, now, pack);
         break;
       case "follow_up":
         response = followUpFlow(history);
@@ -325,7 +334,7 @@ export class DemoLlmClient implements LlmClient {
         response = analystFlow(history);
         break;
       default:
-        response = receptionistFlow(text, history);
+        response = receptionistFlow(text, history, pack);
     }
     // Nunca se propone una herramienta que el agente no tiene disponible.
     if (allowed.size > 0 && response.toolCalls.some((c) => !allowed.has(c.name))) {

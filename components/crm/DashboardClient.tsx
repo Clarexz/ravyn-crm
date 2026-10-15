@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar, CalendarCheck, Clock, UserX, ArrowRight } from "lucide-react";
+import { useLabels } from "@/components/crm/TenantProvider";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, subDays, isWithinInterval, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
 import { KpiCard } from "@/components/crm/KpiCard";
@@ -22,6 +23,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ appointments: initialAppointments, organizationId }: DashboardClientProps) {
+  const L = useLabels();
   const [activeModal, setActiveModal] = useState<{ title: string; appointments: AppointmentWithPatient[] } | null>(null);
   const [appointments, setAppointments] = useState(initialAppointments);
 
@@ -135,25 +137,25 @@ export function DashboardClient({ appointments: initialAppointments, organizatio
 
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
         <div
-          onClick={() => setActiveModal({ title: "Citas de hoy", appointments: todayAppts })}
+          onClick={() => setActiveModal({ title: `${L.booking.plural} de hoy`, appointments: todayAppts })}
           className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
-          <KpiCard title="Citas hoy" value={todayAppts.length} subtitle={`${todayAppts.length} citas hoy`} icon={Calendar} trend="up" iconBg="bg-blue-500" iconColor="text-blue-500" />
+          <KpiCard title={`${L.booking.plural} hoy`} value={todayAppts.length} subtitle={`${todayAppts.length} ${L.booking.plural.toLowerCase()} hoy`} icon={Calendar} trend="up" iconBg="bg-blue-500" iconColor="text-blue-500" />
         </div>
         <div
-          onClick={() => setActiveModal({ title: "Citas de esta semana", appointments: weekAppts })}
+          onClick={() => setActiveModal({ title: `${L.booking.plural} de esta semana`, appointments: weekAppts })}
           className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           <KpiCard title="Esta semana" value={weekAppts.length} subtitle="Total en la semana" icon={CalendarCheck} trend="up" iconBg="bg-emerald-500" iconColor="text-emerald-500" />
         </div>
         <div
-          onClick={() => setActiveModal({ title: "Citas pendientes", appointments: pendingAppts })}
+          onClick={() => setActiveModal({ title: `${L.booking.plural} pendientes`, appointments: pendingAppts })}
           className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           <KpiCard title="Pendientes" value={pendingAppts.length} subtitle="Por confirmar" icon={Clock} trend="neutral" iconBg="bg-amber-500" iconColor="text-amber-500" />
         </div>
         <div
-          onClick={() => setActiveModal({ title: "Pacientes No-show", appointments: noShowAppts })}
+          onClick={() => setActiveModal({ title: `${L.contact.plural} No-show`, appointments: noShowAppts })}
           className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           <KpiCard title="No shows" value={noShowAppts.length} subtitle="Últimos 30 días" icon={UserX} trend="down" iconBg="bg-rose-500" iconColor="text-rose-500" />
@@ -163,7 +165,7 @@ export function DashboardClient({ appointments: initialAppointments, organizatio
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-[32px] p-8 shadow-sm transition-all flex flex-col h-full">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">Citas de hoy</h2>
+            <h2 className="text-[11px] font-black text-[var(--text-secondary)] uppercase tracking-[0.2em]">{L.booking.plural} de hoy</h2>
             <ArrowRight className="w-4 h-4 text-[var(--text-muted)] opacity-30" />
           </div>
           {upcomingToday.length > 0 ? (
@@ -178,7 +180,7 @@ export function DashboardClient({ appointments: initialAppointments, organizatio
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-[var(--text-primary)] truncate transition-colors">
-                        {apt.patients?.full_name ?? "Paciente desconocido"}
+                        {apt.patients?.full_name ?? `${L.contact.singular} desconocido`}
                       </p>
                       <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-1 uppercase tracking-wider transition-colors">
                         {format(new Date(apt.scheduled_at), "HH:mm", { locale: es })}
@@ -215,7 +217,7 @@ export function DashboardClient({ appointments: initialAppointments, organizatio
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-white dark:text-[var(--text-primary)] truncate transition-colors">
-                        {apt.patients?.full_name ?? "Paciente desconocido"}
+                        {apt.patients?.full_name ?? `${L.contact.singular} desconocido`}
                       </p>
                       <p className="text-[10px] text-white/30 dark:text-[var(--text-secondary)] font-bold mt-1 uppercase tracking-widest transition-colors">
                         {format(new Date(apt.scheduled_at), "d 'de' MMMM", { locale: es })}

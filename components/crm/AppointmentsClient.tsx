@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useLabels } from "@/components/crm/TenantProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, List, Search, ChevronLeft, ChevronRight, Bell, Clock, Tag, ExternalLink } from "lucide-react";
 import FullCalendar from "@fullcalendar/react";
@@ -64,6 +65,7 @@ export default function AppointmentsClient({
   clinicName: string;
 }) {
   const router = useRouter();
+  const L = useLabels();
   const [viewMode, setViewMode]         = useState<ViewMode>("calendar");
   const [appointments, _setAppointments] = useState(initialAppointments);
 
@@ -101,7 +103,7 @@ export default function AppointmentsClient({
           } as AppointmentWithPatient;
           
           _setAppointments(prev => [...prev, newAppointment]);
-          toast.success(`Nueva cita agendada: ${patient?.full_name || 'Paciente'}`);
+          toast.success(`Nueva ${L.booking.singular.toLowerCase()} agendada: ${patient?.full_name || L.contact.singular}`);
         }
       )
       .subscribe();
@@ -109,7 +111,7 @@ export default function AppointmentsClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [initialAppointments, organizationId]);
+  }, [initialAppointments, organizationId, L.booking.singular, L.contact.singular]);
 
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -187,7 +189,7 @@ export default function AppointmentsClient({
       _setAppointments((list) => list.map((a) => (a.id === updated.id ? updated : a)));
       setSelectedApt(updated);
       setIsEditing(false);
-      toast.success("Cita actualizada");
+      toast.success(`${L.booking.singular} actualizada`);
       router.refresh();
     } catch {
       toast.error("Error de red");
@@ -245,7 +247,7 @@ export default function AppointmentsClient({
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Agenda de Citas</h1>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Agenda de {L.booking.plural}</h1>
           <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Control de horarios y disponibilidad</p>
         </div>
 
@@ -415,7 +417,7 @@ export default function AppointmentsClient({
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto bg-[var(--bg-surface)] border-none shadow-2xl p-8 rounded-l-[40px] transition-colors">
           <SheetHeader className="mb-10 flex flex-row items-center justify-between">
-            <SheetTitle className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tighter">Expediente de Cita</SheetTitle>
+            <SheetTitle className="text-xl font-bold text-[var(--text-primary)] uppercase tracking-tighter">Detalle de {L.booking.singular}</SheetTitle>
           </SheetHeader>
 
           <AnimatePresence mode="wait">

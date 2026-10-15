@@ -89,8 +89,29 @@ export class DemoDb {
     };
   }
 
+  // Datos de trabajo guardados al cambiar de vertical en la demo: organizacion -> industria -> filas por tabla.
+  workspaceStash: Map<string, Map<string, { rows: Record<string, Row[]>; name: string }>> = new Map();
+
+  // Retira de las tablas TODAS las filas de trabajo de una organizacion (contactos, citas, etc.) y las devuelve.
+  // Solo toca filas con ese organization_id: las demas organizaciones no se ven afectadas.
+  takeOrgRows(orgId: string): Record<string, Row[]> {
+    const out: Record<string, Row[]> = {};
+    for (const name of TABLE_ORDER) {
+      if (name === "organizations" || name === "users") continue;
+      out[name] = this.tables[name].filter((r) => r.organization_id === orgId);
+      this.tables[name] = this.tables[name].filter((r) => r.organization_id !== orgId);
+    }
+    return out;
+  }
+
+  // Devuelve a las tablas filas retiradas con takeOrgRows.
+  putOrgRows(rows: Record<string, Row[]>): void {
+    for (const [name, list] of Object.entries(rows)) this.tables[name].push(...list);
+  }
+
   // Vacia todas las tablas y usuarios de auth (la instancia sigue siendo la misma).
   clear(): void {
+    this.workspaceStash = new Map();
     this.tables = {};
     for (const name of TABLE_ORDER) this.tables[name] = [];
     this.authUsers = [];

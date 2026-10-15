@@ -1,6 +1,8 @@
 // Orquestador: clasifica la intencion y delega en el especialista. Nunca lanza.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { buildIndustryContext } from "@/lib/industry/packs";
+import { loadTenantConfig } from "@/lib/industry/server";
 import type { LlmClient } from "@/lib/agents/llm";
 import { CLASSIFIER_PROMPT } from "@/lib/agents/prompts";
 import { runSpecialist, type ToolTrace } from "@/lib/agents/runtime";
@@ -115,6 +117,9 @@ export async function handleMessage(text: string, ctx: HandleMessageContext): Pr
       disabled: true,
     };
   }
-  const run = await runSpecialist(classification.agent, text.trim(), ctx);
+  // Fase 4: el contexto de industria sale de la configuracion de la organizacion (siempre por organization_id).
+  const industryContext =
+    ctx.industryContext ?? buildIndustryContext(await loadTenantConfig(ctx.db, ctx.organizationId), ctx.now ?? new Date());
+  const run = await runSpecialist(classification.agent, text.trim(), { ...ctx, industryContext });
   return { agent: classification.agent, reason: classification.reason, reply: run.reply, tools: run.tools };
 }

@@ -20,23 +20,19 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { useTenant } from "@/components/crm/TenantProvider";
+import { buildNav } from "@/lib/industry/nav";
 
-interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-}
-
-const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/appointments", label: "Citas", icon: Calendar },
-  { href: "/patients", label: "Pacientes", icon: Users },
-  { href: "/services", label: "Servicios", icon: Tag },
-  { href: "/budgets", label: "Presupuestos", icon: Receipt },
-  { href: "/agents", label: "Agentes", icon: Bot },
-  { href: "/reports", label: "Reportes", icon: BarChart3 },
-  { href: "/settings", label: "Configuración", icon: Settings },
-];
+const ICONS: Record<string, React.ElementType> = {
+  dashboard: LayoutDashboard,
+  bot: Bot,
+  settings: Settings,
+  users: Users,
+  calendar: Calendar,
+  tag: Tag,
+  receipt: Receipt,
+  chart: BarChart3,
+};
 
 interface SidebarProps {
   clinicName?: string;
@@ -51,6 +47,8 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const tenant = useTenant();
+  const navItems = buildNav(tenant.modules);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -73,9 +71,9 @@ export function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-2">
+      <nav data-testid="sidebar-nav" className="flex-1 px-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = ICONS[item.icon] ?? Tag;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (

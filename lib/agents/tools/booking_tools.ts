@@ -3,7 +3,7 @@ import type { ToolDefinition } from "@/lib/agents/types";
 import {
   assertOwned,
   check,
-  dayIsOpen,
+  dateIsOpen,
   getOwned,
   insertActivity,
   invalid,
@@ -13,12 +13,14 @@ import {
   overlaps,
   pad,
   roundMoney,
+  tzOf,
   withinBusinessHours,
   type BusinessHours,
   type Interval,
   type Row,
 } from "./shared";
 import type { ToolContext } from "@/lib/agents/types";
+import { addDays, localIso, zonedToUtc } from "@/lib/industry/time";
 
 const MAX_RANGE_DAYS = 31;
 const DAY_MS = 86_400_000;
@@ -55,23 +57,22 @@ export function computeFreeSlots(opts: {
   busy: Interval[];
   now: Date;
 }) {
-  const days: Array<{ date: string; slots: Array<{ start: string; end: string }> }> = [];
+  const days: Array<{ date: string; slots: Array<{ start: string; end: string; start_local: string }> }> = [];
   let total = 0;
-  for (let t = Date.parse(opts.dateFrom); t <= Date.parse(opts.dateTo); t += DAY_MS) {
-    const day = new Date(t);
-    const date = day.toISOString().slice(0, 10);
-    const slots: Array<{ start: string; end: string }> = [];
-    if (dayIsOpen(opts.hours, day)) {
+  const tz = tzOf(opts.hours);
+  for (let date = opts.dateFrom; date <= opts.dateTo; date = addDays(date, 1)) {
+    const slots: Array<{ start: string; end: string; start_local: string }> = [];
+    if (dateIsOpen(opts.hours, date)) {
       for (
         let m = opts.hours.startMin;
         m + opts.durationMinutes <= opts.hours.endMin && total < MAX_SLOTS;
         m += opts.stepMinutes
       ) {
-        const start = new Date(t + m * 60_000);
+        const start = zonedToUtc(date, m, tz);
         const slot: Interval = { start, end: new Date(start.getTime() + opts.durationMinutes * 60_000) };
         if (slot.start < opts.now) continue;
         if (opts.busy.some((b) => overlaps(slot, b))) continue;
-        slots.push({ start: slot.start.toISOString(), end: slot.end.toISOString() });
+        slots.push({ start: slot.start.toISOString(), end: slot.end.toISOString(), start_local: localIso(slot.start, tz) });
         total++;
       }
     }
@@ -83,14 +84,15 @@ export function computeFreeSlots(opts: {
 export const checkAvailability: ToolDefinition<z.infer<typeof availabilityInput>> = {
   name: "check_availability",
   description:
-    "Consulta horarios libres en un rango de fechas (maximo 31 dias) segun el horario laboral de la organizacion y las citas no canceladas. Las horas se expresan en UTC.",
+    "Consulta horarios libres en un rango de fechas (maximo 31 dias) segun el horario laboral de la organizacion y las citas no canceladas. Las horas start y end se expresan en UTC; start_local es la hora local de la organizacion (campo timezone).",
   input: availabilityInput,
   risk: "low",
   critical: false,
   async run(ctx, input) {
     const hours = await loadBusinessHours(ctx);
-    const from = new Date(`${input.date_from}T00:00:00.000Z`);
-    const to = new Date(Date.parse(`${input.date_to}T00:00:00.000Z`) + DAY_MS);
+    const tz = tzOf(hours);
+    const from = zonedToUtc(input.date_from, 0, tz);
+    const to = zonedToUtc(addDays(input.date_to, 1), 0, tz);
     const busy = await loadBlockingBookings(ctx, from, to);
     const { days, total } = computeFreeSlots({
       dateFrom: input.date_from,
@@ -102,7 +104,7 @@ export const checkAvailability: ToolDefinition<z.infer<typeof availabilityInput>
       now: nowOf(ctx),
     });
     return {
-      timezone: "UTC",
+      timezone: tz,
       duration_minutes: input.duration_minutes,
       business_hours: { start: hm(hours.startMin), end: hm(hours.endMin), days: hours.days },
       total_slots: total,

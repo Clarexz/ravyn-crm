@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLabels } from "@/components/crm/TenantProvider";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ const emptyService = (): EditableService => ({
 });
 
 export function ServicesClient({ services }: { services: Service[] }) {
+  const L = useLabels();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -113,7 +115,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         return;
       }
 
-      toast.success(editingId ? "Servicio actualizado" : "Servicio creado");
+      toast.success(`${L.item.singular} ${editingId ? "actualizado" : "creado"}`);
       setDialogOpen(false);
       resetForm();
       router.refresh();
@@ -134,7 +136,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         toast.error(err.error ?? "Error al eliminar");
         return;
       }
-      toast.success("Servicio eliminado");
+      toast.success(`${L.item.singular} eliminado`);
       router.refresh();
     } catch {
       toast.error("Error de red");
@@ -147,7 +149,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
     <div className="space-y-8 w-full">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Catálogo de Servicios</h1>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Catálogo de {L.item.plural}</h1>
           <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Gestión de tratamientos, costos y colores</p>
         </div>
         <Button
@@ -253,7 +255,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
         <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter transition-colors">
-              {editingId ? "Actualizar Servicio" : "Nuevo Tratamiento"}
+              {editingId ? `Actualizar ${L.item.singular}` : `Nuevo ${L.item.singular}`}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
@@ -319,7 +321,7 @@ export function ServicesClient({ services }: { services: Service[] }) {
                 disabled={isSaving || !values.name.trim()}
                 className="h-12 px-8 text-[11px] font-black uppercase tracking-widest bg-[var(--brand-accent)] text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all hover:opacity-90"
               >
-                {isSaving ? "Guardando..." : editingId ? "Actualizar" : "Crear Servicio"}
+                {isSaving ? "Guardando..." : editingId ? "Actualizar" : `Crear ${L.item.singular}`}
               </Button>
             </div>
           </div>

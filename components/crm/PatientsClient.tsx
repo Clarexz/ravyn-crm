@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLabels } from "@/components/crm/TenantProvider";
 import { useRouter } from "next/navigation";
 import { Search, Plus, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
@@ -31,6 +32,7 @@ const SOURCE_CONFIG: Record<Patient["source"], { label: string; className: strin
 interface EditablePatient { full_name: string; phone: string; email: string; notes: string }
 
 export default function PatientsClient({ patients }: { patients: Patient[] }) {
+  const L = useLabels();
   const router = useRouter();
   const [search, setSearch]                 = useState("");
   const [sourceFilter, setSourceFilter]     = useState<string>("all");
@@ -59,7 +61,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
         toast.error("Error al crear paciente");
         return;
       }
-      toast.success("Paciente creado");
+      toast.success(`${L.contact.singular} creado`);
       resetCreateForm();
       setCreateOpen(false);
       router.refresh();
@@ -97,7 +99,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Directorio de Pacientes</h1>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">Directorio de {L.contact.plural}</h1>
           <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1">Base de datos centralizada de la clínica</p>
         </div>
         <Button
@@ -189,7 +191,7 @@ export default function PatientsClient({ patients }: { patients: Patient[] }) {
       <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetCreateForm(); }}>
         <DialogContent className="w-[95vw] max-w-lg bg-[var(--bg-surface)] border-none shadow-2xl rounded-[40px] p-10 transition-colors">
           <DialogHeader className="mb-6">
-            <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Registrar Nuevo Paciente</DialogTitle>
+            <DialogTitle className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tighter">Registrar Nuevo {L.contact.singular}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">

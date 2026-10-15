@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLabels } from "@/components/crm/TenantProvider";
 import { Search, Plus, Receipt, FileDown, Trash2, Eye, Users, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -25,6 +26,7 @@ const STATUS_CONFIG: Record<BudgetStatus, { label: string; className: string }> 
 };
 
 export function BudgetsClient({ budgets: initialBudgets }: BudgetsClientProps) {
+  const L = useLabels();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [budgets, setBudgets] = useState<Budget[]>(initialBudgets);
@@ -49,7 +51,7 @@ export function BudgetsClient({ budgets: initialBudgets }: BudgetsClientProps) {
       if (!res.ok) throw new Error("Error al eliminar");
       
       setBudgets(prev => prev.filter(b => b.id !== id));
-      toast.success("Presupuesto eliminado");
+      toast.success(`${L.budget.singular} eliminado`);
       router.refresh();
     } catch {
       toast.error("No se pudo eliminar el presupuesto");
@@ -62,7 +64,7 @@ export function BudgetsClient({ budgets: initialBudgets }: BudgetsClientProps) {
     <div className="space-y-8 w-full">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">Presupuestos</h1>
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight transition-colors">{L.budget.plural}</h1>
           <p className="text-sm text-[var(--text-secondary)] font-semibold mt-1 transition-colors">Cotizaciones y planes de tratamiento familiar</p>
         </div>
         <Button

@@ -2,18 +2,19 @@
 // fijos; solo las fechas son relativas al "ahora" con el que se siembra, para que el dashboard
 // siempre tenga datos recientes y futuros. Todo es ficticio (nada de personas reales).
 //
-// Horario: las herramientas de agentes interpretan el horario laboral en UTC (09:00-18:00), asi que
-// todas las citas caen entre 15:00 y 18:00 UTC. En Ciudad de Mexico (UTC-6, sin horario de verano)
-// eso se ve como 09:00-12:00, dentro del horario laboral tambien en hora local.
+// Horario: las herramientas de agentes interpretan el horario laboral en la zona horaria de la
+// organizacion (settings.timezone, Fase 4). Las citas de la clinica caen entre 15:00 y 18:00 UTC; en
+// Ciudad de Mexico (UTC-6, sin horario de verano) eso se ve como 09:00-12:00, dentro del horario laboral.
 import { DEMO_ORG_ID, DEMO_OTHER_ORG_ID, DEMO_USER_ID } from "./config";
 import type { DemoDb, Row } from "./engine";
+import { packFor } from "@/lib/industry/packs";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
 // uuid determinista: etiqueta hexadecimal + contador. Las filas de la segunda organizacion usan n >= 500.
-const mk =
+export const mk =
   (tag: string) =>
   (n: number): string =>
     `00000000-0000-4000-8000-${tag}${String(n).padStart(12 - tag.length, "0")}`;
@@ -232,8 +233,9 @@ function seed(db: DemoDb, now: Date): DemoSeedSummary {
     subdomain: "clinica-demo",
     plan: "standard",
     settings: {
-      active_modules: ["contacts", "bookings", "pipeline", "activities", "budgets", "reports"],
+      active_modules: [...packFor("health").modules],
       business_hours: { start: "09:00", end: "18:00", days: [1, 2, 3, 4, 5] },
+      timezone: "America/Mexico_City",
       agent_autonomy: "balanced",
     },
     created_at: ago(120),
@@ -248,8 +250,10 @@ function seed(db: DemoDb, now: Date): DemoSeedSummary {
     subdomain: "sonrisas-norte",
     plan: "starter",
     settings: {
-      active_modules: ["contacts", "bookings", "pipeline", "activities"],
+      // Plan starter: sin presupuestos ni reportes en el menu (muestra modulos distintos por organizacion).
+      active_modules: ["contacts", "bookings", "items", "pipeline", "activities"],
       business_hours: { start: "10:00", end: "14:00", days: [1, 2, 3, 4, 5, 6] },
+      timezone: "America/Monterrey",
       agent_autonomy: "conservative",
     },
     created_at: ago(90),
@@ -383,10 +387,10 @@ function seed(db: DemoDb, now: Date): DemoSeedSummary {
     });
     bookings.push({ id: bookingId(i + 1), status, created, contact, source, scheduled });
   }
-  // Segunda organizacion: una cita pasada y una futura (horario 10:00-14:00 UTC).
+  // Segunda organizacion: una cita pasada y una futura (horario 10:00-14:00 hora de Monterrey = 16:00-20:00 UTC).
   [
-    { n: 1, off: bizOffset(-3), status: "completed", contact: 1, item: 1, hh: 10 },
-    { n: 2, off: bizOffset(4), status: "confirmed", contact: 2, item: 2, hh: 11 },
+    { n: 1, off: bizOffset(-3), status: "completed", contact: 1, item: 1, hh: 16 },
+    { n: 2, off: bizOffset(4), status: "confirmed", contact: 2, item: 2, hh: 17 },
   ].forEach((b) => {
     put("bookings", {
       id: bookingId(500 + b.n),

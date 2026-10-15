@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEMO_ORG_ID, DEMO_OTHER_ORG_ID, DEMO_USER_ID } from "@/lib/demo/config";
 import { DemoDb, SCHEMA, getDemoDb, resetDemoDb, seedDemoData, type Row } from "@/lib/demo";
+import { zonedParts } from "@/lib/industry/time";
 
 const DAY = 86_400_000;
 // Distintos dias de la semana y horas (incluye fin de semana y borde de anio).
@@ -99,20 +100,21 @@ describe.each(NOWS)("invariantes de la siembra (now = %s)", (nowIso) => {
     expect(settings.active_modules).toEqual(expect.arrayContaining(["contacts", "bookings", "pipeline", "activities"]));
   });
 
-  it("bookings: sin solapes dentro de la organizacion, en dias habiles y horario laboral (UTC)", () => {
+  it("bookings: sin solapes dentro de la organizacion, en dias habiles y horario laboral (hora local de la organizacion)", () => {
     for (const org of [DEMO_ORG_ID, DEMO_OTHER_ORG_ID]) {
+      const tz = org === DEMO_ORG_ID ? "America/Mexico_City" : "America/Monterrey";
       const hours = org === DEMO_ORG_ID ? [9 * 60, 18 * 60, [1, 2, 3, 4, 5]] : [10 * 60, 14 * 60, [1, 2, 3, 4, 5, 6]];
       const list = rows(db, "bookings", org)
         .map((b) => ({ start: ms(b.scheduled_at), end: ms(b.scheduled_at) + (b.duration_minutes as number) * 60_000 }))
         .sort((a, b) => a.start - b.start);
       for (let i = 1; i < list.length; i++) expect(list[i].start).toBeGreaterThanOrEqual(list[i - 1].end);
       for (const b of list) {
-        const s = new Date(b.start);
-        const e = new Date(b.end);
-        expect((hours[2] as number[]).includes(s.getUTCDay())).toBe(true);
-        expect(s.toISOString().slice(0, 10)).toBe(e.toISOString().slice(0, 10));
-        expect(s.getUTCHours() * 60 + s.getUTCMinutes()).toBeGreaterThanOrEqual(hours[0] as number);
-        expect(e.getUTCHours() * 60 + e.getUTCMinutes()).toBeLessThanOrEqual(hours[1] as number);
+        const s = zonedParts(new Date(b.start), tz);
+        const e = zonedParts(new Date(b.end), tz);
+        expect((hours[2] as number[]).includes(s.isoWeekday)).toBe(true);
+        expect(s.date).toBe(e.date);
+        expect(s.minutes).toBeGreaterThanOrEqual(hours[0] as number);
+        expect(e.minutes).toBeLessThanOrEqual(hours[1] as number);
       }
     }
   });

@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { reviewAction } from "@/components/crm/agents/usePendingActions";
 import { agentMeta, canApprove, CRITICAL_ADMIN_ONLY_HINT, payloadOf, STATUS_LABELS, type ActionDiff, type ActionView } from "@/lib/agents/ui";
 import { cn } from "@/lib/utils";
+import { useTenant } from "@/components/crm/TenantProvider";
+import { formatInZone } from "@/lib/industry/time";
 
 type Props = {
   action: ActionView | null;
@@ -26,6 +28,7 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { timezone } = useTenant();
 
   const id = action?.id ?? null;
   const p = useMemo(() => (action ? payloadOf(action) : null), [action]);
@@ -59,6 +62,14 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
   const meta = agentMeta(action.agent_name);
   const pending = action.status === "pending";
   const mayApprove = canApprove(isAdmin, p.critical);
+  // Fechas del payload en la hora local de la organizacion (el payload guarda UTC).
+  const localTimes = [
+    ["scheduled_at", "Fecha"],
+    ["new_scheduled_at", "Nueva fecha"],
+  ].flatMap(([key, label]) => {
+    const v = p.input[key];
+    return typeof v === "string" && !Number.isNaN(Date.parse(v)) ? [{ label, text: formatInZone(v, timezone) }] : [];
+  });
 
   // Solo se reenvian los campos escalares que cambiaron; el resto del input se conserva tal cual.
   const modifiedInput = (): Record<string, unknown> | undefined => {
@@ -124,6 +135,11 @@ export function ActionReviewDialog({ action, onClose, onReviewed }: Props) {
           <p data-testid="agent-reason" className="mt-1 rounded-2xl bg-[var(--bg-card-hover)] px-4 py-3 text-sm text-[var(--text-primary)]">
             {p.reason || "El agente no indico un motivo."}
           </p>
+          {localTimes.length > 0 && (
+            <p data-testid="local-times" className="mt-1.5 text-xs text-[var(--text-secondary)]">
+              {localTimes.map((t) => `${t.label}: ${t.text}`).join(" · ")} ({timezone})
+            </p>
+          )}
         </section>
 
         <section>

@@ -1,6 +1,7 @@
 // Utilidades compartidas por las herramientas de agentes.
 // Regla de oro: toda consulta filtra por ctx.organizationId y todo insert lleva organization_id.
 import type { ToolContext, ToolErrorCode } from "@/lib/agents/types";
+import { DEFAULT_TIMEZONE, safeTimeZone, zonedParts, zonedToUtc } from "@/lib/industry/time";
 
 // Error tipado: el ejecutor lo traduce a un ToolResult con su codigo y mensaje (seguros para el modelo).
 export class ToolError extends Error {
@@ -100,11 +101,11 @@ export function quoteOrValue(value: string): string {
 
 export const roundMoney = (n: number): number => Math.round(n * 100) / 100;
 
-// --- Horario laboral y disponibilidad (las horas del negocio se interpretan en UTC) ---
+// --- Horario laboral y disponibilidad (las horas del negocio se interpretan en la zona horaria de la organizacion; D-13) ---
 
-export type BusinessHours = { startMin: number; endMin: number; days: number[] };
+export type BusinessHours = { startMin: number; endMin: number; days: number[]; timeZone?: string };
 
-const DEFAULT_HOURS: BusinessHours = { startMin: 9 * 60, endMin: 18 * 60, days: [1, 2, 3, 4, 5] };
+const DEFAULT_HOURS: BusinessHours = { startMin: 9 * 60, endMin: 18 * 60, days: [1, 2, 3, 4, 5], timeZone: DEFAULT_TIMEZONE };
 
 function parseHm(v: unknown): number | null {
   if (typeof v !== "string") return null;
@@ -115,46 +116,58 @@ function parseHm(v: unknown): number | null {
   return h <= 24 && mi < 60 ? h * 60 + mi : null;
 }
 
+export const tzOf = (hours: BusinessHours): string => hours.timeZone ?? DEFAULT_TIMEZONE;
+
 export async function loadBusinessHours(ctx: ToolContext): Promise<BusinessHours> {
   const res = await ctx.db
     .from("organizations")
     .select("settings")
     .eq("id", ctx.organizationId)
     .maybeSingle();
-  const org = check(res) as { settings?: { business_hours?: Row } } | null;
+  const org = check(res) as { settings?: { business_hours?: Row; timezone?: unknown } } | null;
   if (!org) throw notFound("la organizacion");
+  const timeZone = org.settings?.timezone === undefined ? DEFAULT_TIMEZONE : safeTimeZone(org.settings.timezone);
   const bh = org.settings?.business_hours;
-  if (!bh) return DEFAULT_HOURS;
+  if (!bh) return { ...DEFAULT_HOURS, timeZone };
   const startMin = parseHm(bh.start);
   const endMin = parseHm(bh.end);
   const days = Array.isArray(bh.days) ? bh.days.filter((d): d is number => typeof d === "number") : null;
-  if (startMin === null || endMin === null || !days || endMin <= startMin) return DEFAULT_HOURS;
-  return { startMin, endMin, days };
+  if (startMin === null || endMin === null || !days || endMin <= startMin) return { ...DEFAULT_HOURS, timeZone };
+  return { startMin, endMin, days, timeZone };
 }
 
 // Lunes=1 ... Domingo=7 (acepta 0 como domingo en la configuracion).
-export function isoWeekday(date: Date): number {
-  const d = date.getUTCDay();
-  return d === 0 ? 7 : d;
+export function isoWeekday(date: Date, timeZone: string = DEFAULT_TIMEZONE): number {
+  return zonedParts(date, timeZone).isoWeekday;
 }
 
-export function dayIsOpen(hours: BusinessHours, date: Date): boolean {
-  const wd = isoWeekday(date);
+function weekdayOpen(hours: BusinessHours, wd: number): boolean {
   return hours.days.includes(wd) || (wd === 7 && hours.days.includes(0));
 }
 
-export function minutesOfDay(date: Date): number {
-  return date.getUTCHours() * 60 + date.getUTCMinutes();
+// El instante cae en un dia habil (dia local de la organizacion).
+export function dayIsOpen(hours: BusinessHours, date: Date): boolean {
+  return weekdayOpen(hours, isoWeekday(date, tzOf(hours)));
 }
 
-// true si [start, end) cae completo dentro de un dia habil y su horario.
+// El dia local YYYY-MM-DD es habil.
+export function dateIsOpen(hours: BusinessHours, ymd: string): boolean {
+  return dayIsOpen(hours, zonedToUtc(ymd, 12 * 60, tzOf(hours)));
+}
+
+export function minutesOfDay(date: Date, timeZone: string = DEFAULT_TIMEZONE): number {
+  return zonedParts(date, timeZone).minutes;
+}
+
+// true si [start, end) cae completo dentro de un dia habil y su horario (hora local de la organizacion).
 export function withinBusinessHours(hours: BusinessHours, start: Date, end: Date): boolean {
-  if (!dayIsOpen(hours, start)) return false;
-  if (start.toISOString().slice(0, 10) !== end.toISOString().slice(0, 10) && minutesOfDay(end) !== 0) {
-    return false;
-  }
-  const endMin = minutesOfDay(end) === 0 && end > start ? 24 * 60 : minutesOfDay(end);
-  return minutesOfDay(start) >= hours.startMin && endMin <= hours.endMin;
+  const tz = tzOf(hours);
+  const s = zonedParts(start, tz);
+  const e = zonedParts(end, tz);
+  if (!weekdayOpen(hours, s.isoWeekday)) return false;
+  if (s.date !== e.date && e.minutes !== 0) return false;
+  const endMin = e.minutes === 0 && end > start ? 24 * 60 : e.minutes;
+  return s.minutes >= hours.startMin && endMin <= hours.endMin;
 }
 
 export type Interval = { start: Date; end: Date; id?: string };
