@@ -12,11 +12,11 @@ El proyecto queda **certificado en modo demo**: los tres escenarios del plan pas
 |---|---|
 | `npm run typecheck` | sin errores |
 | `npm run lint` | sin advertencias ni errores |
-| `npm test` (vitest) | **534 pruebas en 27 archivos, todas en verde** (438 al inicio de la fase: +96; duracion ~6 s) |
+| `npm test` (vitest) | **535 pruebas en 27 archivos, todas en verde** (438 al inicio de la fase: +97; duracion ~6 s) |
 | `npm run build` | compila; 27 paginas generadas |
-| `npx playwright test` | **36 pruebas en verde** (32 previas + 4 de la fase), repetido **3 veces seguidas** sobre el mismo servidor (59.0 s, 57.9 s, 59.1 s): 108 de 108 |
+| `npx playwright test` | **36 pruebas en verde** (32 previas + 4 de la fase), repetido **3 veces seguidas** sobre el mismo servidor (59.0 s, 57.9 s, 59.1 s) y otras 3 sobre ese mismo servidor ya con el estado acumulado (39.6 s, 49.6 s, 41.0 s): 216 de 216 |
 
-Las pruebas nuevas de la fase: 95 en vitest (`tests/e2e-flows/*` 92 + `tests/industry/vertical-reset.test.ts` 3), 1 ampliacion de `tools.test.ts` (entradas invalidas de `cancel_booking`) y 4 de Playwright.
+Las pruebas nuevas de la fase: 96 en vitest (`tests/e2e-flows/*` 92 + `tests/industry/vertical-reset.test.ts` 4), 1 ampliacion de `tools.test.ts` (entradas invalidas de `cancel_booking`) y 4 de Playwright.
 
 Verificacion de que las pruebas detectan regresiones (mutaciones manuales, revertidas despues): quitar la comprobacion de administrador al aprobar -> 17 fallos; quitar el filtro de organizacion de `getOwned` -> 9; hacer que cancelar deje de ser critico -> 8; subir el limite de comensales a 20 -> 6; no validar al responsable de una tarea -> 1. Ninguna mutacion paso desapercibida.
 
@@ -88,7 +88,7 @@ Flujo = mensaje -> `handleMessage` (clasificacion del orquestador) -> especialis
 | Escenario de clinica por la UI (6 pasos, 2 roles) | 5.8 a 8 s | n/a |
 | Escenario de restaurante / inmobiliario por la UI | 1.9 a 4.7 s / 0.9 a 2.9 s | n/a |
 | Movimiento de tarjeta en el Kanban (Fase 5, repetido en las 3 corridas) | 18, 20 y 31 ms | < 200 ms |
-| Pruebas vitest de la fase | 8 archivos, 95 pruebas, ~2.5 s | n/a |
+| Pruebas vitest de la fase | 8 archivos, 96 pruebas, ~2.5 s | n/a |
 | Cobertura de herramientas con flujo completo | 16/16 (100%) | 100% |
 | Cobertura de herramientas con sonda de aislamiento | 16/16 (100%) | 100% |
 | Reglas criticas con casos en la matriz | 5/5 (100%) | 100% |
@@ -138,6 +138,7 @@ Estado: ABIERTO = pendiente para datos reales; ACEPTADO = decision del dueno; CE
 | R6-07 | Fase 6 | ABIERTO | La tarea asignada solo se ve en el historial del contacto: no hay vista "mis tareas" ni aviso al asesor | modulo de tareas y notificaciones |
 | R6-08 | Fase 6 | ABIERTO | Las pruebas usan el LLM de demo y un LLM con guion; el comportamiento de un LLM real (ids, redaccion, orden de llamadas) no esta certificado. La gobernanza no depende del modelo (se verifico llamando a las herramientas directamente), el flujo util si | bateria de evaluacion con el modelo real y claves de prueba |
 | R6-09 | Fase 6 | ABIERTO (menor) | El resumen de la bandeja no usa el vocabulario del giro ("Agendar una cita ... para 12 personas" en un restaurante) y el de cancelacion muestra el id de la cita; en movil el estado de la cita se encima al texto en el historial del perfil (UI anterior a la fase) | resumenes con nombres y etiquetas del giro |
+| R6-11 | Fase 6 | ABIERTO | Inyeccion de prompt por datos: `search_contact` entrega al modelo titulos de oportunidades y citas ademas de notas; un tercero que escribe por un canal podria influir. La gobernanza no depende del modelo (lo critico exige persona y toda escritura de riesgo medio o alto queda en la bandeja con su diff) | evaluar con el modelo real (R6-08) |
 | R6-10 | Fase 6 | ACEPTADO | Las acciones pendientes no caducan: aprobar una cancelacion de una cita que ya cambio falla con un error legible (queda `failed`) | caducidad configurable |
 
 ## 8. Pendientes para el paso a datos reales
