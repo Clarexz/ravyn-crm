@@ -14,12 +14,29 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import { Clock, GripVertical, Lock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useTenant } from "@/components/crm/TenantProvider";
 import { STAGES, STAGE_LABELS, isStage, stageMoveNeedsAdmin, type PipelineBoard, type PipelineCard, type Stage } from "@/lib/pipeline/stages";
 import { cn } from "@/lib/utils";
+
+// Teclado: flecha izquierda/derecha salta a la columna vecina (el paso por defecto de dnd-kit es de 25 px).
+const columnKeyboardCoordinates: KeyboardCoordinateGetter = (event, { context: { active, droppableRects, droppableContainers, collisionRect } }) => {
+  if ((event.code !== "ArrowRight" && event.code !== "ArrowLeft") || !active || !collisionRect) return undefined;
+  event.preventDefault();
+  const columns = droppableContainers
+    .getEnabled()
+    .map((c) => ({ rect: droppableRects.get(c.id) }))
+    .filter((c): c is { rect: NonNullable<typeof c.rect> } => !!c.rect)
+    .sort((a, b) => a.rect.left - b.rect.left);
+  const cx = collisionRect.left + collisionRect.width / 2;
+  let current = columns.findIndex((c) => cx >= c.rect.left && cx <= c.rect.left + c.rect.width);
+  if (current < 0) current = columns.reduce((best, c, i) => (Math.abs(c.rect.left - cx) < Math.abs(columns[best].rect.left - cx) ? i : best), 0);
+  const next = columns[current + (event.code === "ArrowRight" ? 1 : -1)];
+  return next ? { x: next.rect.left + 8, y: collisionRect.top } : undefined;
+};
 
 const ADMIN_ONLY_HINT = "Solo un administrador puede cerrar o reabrir oportunidades.";
 
@@ -173,7 +190,7 @@ export function PipelineClient({ initialCards, isAdmin: initialAdmin, staleDays,
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: columnKeyboardCoordinates }),
   );
 
   const reload = useCallback(async () => {

@@ -195,8 +195,8 @@ export function buildBriefing(m: AnalystMetrics, labels: Labels): Briefing {
     { key: "opportunity_conversion", label: `Conversión de ${pipe} cerrados`, value: oc.closed === 0 ? "sin datos (ningún cierre)" : `${fmtPct(oc.rate_pct)} (ganados: ${oc.won} de ${oc.closed} cierres)` },
     { key: "quote_conversion", label: `Conversión de ${budgets}`, value: qc.issued === 0 ? "sin datos (ninguna emitida)" : `${fmtPct(qc.rate_pct)} (aceptadas: ${qc.accepted} de ${qc.issued} emitidas)` },
     { key: "no_show", label: `Inasistencias en ${bookings}`, value: ns.no_show + ns.completed === 0 ? "sin datos (ninguna resuelta)" : `${fmtPct(ns.rate_pct)} (${ns.no_show} de ${ns.no_show + ns.completed})` },
-    { key: "pipeline_value", label: `Valor del embudo (${pipe})`, value: `${fmtMoney(m.pipeline.open_value)} en ${m.pipeline.open_count} abiertos` },
-    { key: "won", label: `Ganado en el periodo`, value: `${fmtMoney(m.pipeline.won_in_period.value)} (${m.pipeline.won_in_period.count} cierres)` },
+    { key: "pipeline_value", label: `Valor del embudo (${pipe})`, value: `${fmtMoney(m.pipeline.open_value)} en ${m.pipeline.open_count} por cerrar` },
+    { key: "won", label: `Ganado en el periodo`, value: `${fmtMoney(m.pipeline.won_in_period.value)} (${times(m.pipeline.won_in_period.count, "cierre", "cierres")})` },
     { key: "stale", label: `${labels.pipeline.plural} sin actividad ${m.stale.days}+ días`, value: `${m.stale.count}${m.stale.truncated ? "+" : ""}${m.stale.count > 0 ? ` (${fmtMoney(m.stale.value)} en juego)` : ""}` },
   ];
 

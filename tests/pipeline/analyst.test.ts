@@ -111,7 +111,7 @@ describe("ANL-01: las cifras del reporte coinciden con calculos de control", () 
     expect(text).toContain("66.7% (ganados: 2 de 3 cierres)");
     expect(text).toContain("33.3% (aceptadas: 1 de 3 emitidas)");
     expect(text).toContain("25% (1 de 4)");
-    expect(text).toContain("$1,600 en 4 abiertos");
+    expect(text).toContain("$1,600 en 4 por cerrar");
     expect(text).toContain("$3,000 (2 cierres)");
     // Todo numero del texto proviene de las metricas o de las fechas/etiquetas: no hay cifras ajenas.
     const allowed = new Set(["30", "4", "2", "3", "1", "66.7", "33.3", "25", "1,600", "3,000", "800", "15", "20", "16", "700", "100", "0", "10"]);

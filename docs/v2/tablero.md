@@ -75,5 +75,17 @@ Un solo dueno por archivo; el maestro hizo toda la fase (modulos con contrato co
 | 4-7 | Pruebas IND-01 e IND-02 (vitest y Playwright) | `tests/industry/*`, `e2e/industry.spec.ts` | integrado |
 | 4-8 | Revision de seguridad | `docs/v2/revision-seguridad-fase4.md` | integrada |
 
-## Fase 5 (siguiente)
-Pipeline de ventas (Kanban en `/pipeline`) y Agente Analista. No iniciada: se espera la confirmacion del dueno.
+## Fase 5 - Estado (cerrada, a la espera de confirmacion para la Fase 6)
+Un solo dueno por archivo; el maestro hizo toda la fase (ver D-14 a D-16).
+
+| Id | Tarea | Archivos | Estado |
+|---|---|---|---|
+| 5-1 | Etapas, tipos y movimiento humano atomico de etapa | `lib/pipeline/{stages,board}.ts`, `app/api/pipeline/**` | integrado |
+| 5-2 | Tablero Kanban `/pipeline` (dnd-kit, teclado, movil, optimista) y entrada de menu | `components/crm/PipelineClient.tsx`, `app/(dashboard)/pipeline/*`, `lib/industry/{packs,nav}.ts`, `Sidebar.tsx` | integrado |
+| 5-3 | Agente Analista: metricas de la base, briefing determinista y herramienta `generate_briefing` | `lib/agents/analyst.ts`, `permissions.ts`, `tools/index.ts`, `demoLlm.ts`, `prompts.ts` | integrado |
+| 5-4 | Widget "Briefing Diario" y `GET /api/briefing` | `components/crm/BriefingCard.tsx`, `DashboardClient.tsx`, `app/api/briefing/route.ts` | integrado |
+| 5-5 | Pruebas ANL-01, ANL-02, Kanban (vitest) y Playwright | `tests/pipeline/*`, `e2e/pipeline.spec.ts` | integrado |
+| 5-6 | Revision de seguridad | `docs/v2/revision-seguridad-fase5.md` | integrada |
+
+## Fase 6 (siguiente)
+Pruebas de integracion end-to-end en tres industrias. No iniciada: se espera la confirmacion del dueno.
